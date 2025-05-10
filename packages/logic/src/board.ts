@@ -49,11 +49,11 @@ export function checkAlignment(board: Board, cell: Cell): number {
 export function applyYamPredator(players: Player[], currentPlayerIndex: number, cell: Cell): Player[] {
   const opponent = players[1 - currentPlayerIndex];
   const key = `${cell.x}:${cell.y}`;
-  
-  if (opponent.board[key]) {
-    opponent.board[key] = false;
+
+  if (opponent.occupied[key]) {
+    opponent.occupied[key] = false;
     opponent.pawns++;
   }
-  
+
   return [...players];
 }
