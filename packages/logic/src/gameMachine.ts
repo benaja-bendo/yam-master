@@ -1,33 +1,40 @@
 import { assign, setup } from "xstate";
 import { rollDice, evaluateCombinations } from "./utils";
-import { GameContext, GameEvent, defaultBoard } from "./types";
-import { checkAlignment, applyYamPredator } from './board';
+import { GameContext, GameEvent, defaultBoard, Combination } from "./types";
+import { checkAlignment, applyYamPredator } from "./board";
 
-export const gameMachine = setup({
-  types: () => ({
+export const SuperGameMachine = setup({
+  types: {
     context: {} as GameContext,
     events: {} as GameEvent,
-  }),
+  },
   actions: {
-    placePawn: assign((context, event) => {
-      if (event.type !== "ACCEPT_COMBINATION" && event.type !== "USE_YAM_PREDATOR") {
+    placePawn: assign(({ context, event }) => {
+      if (
+        event.type !== "ACCEPT_COMBINATION" &&
+        event.type !== "USE_YAM_PREDATOR"
+      ) {
         return { players: context.players };
       }
-      
+
       if (event.type === "USE_YAM_PREDATOR") {
-        return { 
-          players: applyYamPredator(context.players, context.currentPlayerIndex, event.cell)
+        return {
+          players: applyYamPredator(
+            context.players,
+            context.currentPlayerIndex,
+            event.cell
+          ),
         };
       }
 
       const updatedPlayers = [...context.players];
       const player = updatedPlayers[context.currentPlayerIndex];
       const key = `${event.cell.x}:${event.cell.y}`;
-      
+
       if (player.occupied[key]) {
         return { players: context.players };
       }
-      
+
       player.occupied[key] = true;
       player.pawns--;
       const gained = checkAlignment(player.occupied, event.cell);
@@ -36,27 +43,39 @@ export const gameMachine = setup({
       } else {
         player.score += gained;
       }
-      
+
       return { players: updatedPlayers };
     }),
   },
   guards: {
-    hasRollsLeft: (ctx) => ctx.rollsLeft > 0,
-    validCombination: (ctx, event) =>
+    hasRollsLeft: ({ context }) => context.rollsLeft > 0,
+    validCombination: ({ context, event }) =>
       event.type === "CHOOSE_COMBINATION" &&
-      evaluateCombinations(ctx.dice).includes(event.combination),
-    canUseYamPredator: (ctx, event) =>
+      evaluateCombinations(context.dice).includes(event.combination),
+    canUseYamPredator: ({ context, event }) =>
       event.type === "CHOOSE_COMBINATION" &&
       event.combination === "yam" &&
-      evaluateCombinations(ctx.dice).includes("yam"),
+      evaluateCombinations(context.dice).includes("yam"),
   },
 }).createMachine({
   id: "yamMaster",
   initial: "idle",
   context: {
     players: [
-      { id: "player1", pawns: 12, board: { ...defaultBoard }, score: 0, occupied: {} },
-      { id: "player2", pawns: 12, board: { ...defaultBoard }, score: 0, occupied: {} },
+      {
+        id: "player1",
+        pawns: 12,
+        board: { ...defaultBoard },
+        score: 0,
+        occupied: {},
+      },
+      {
+        id: "player2",
+        pawns: 12,
+        board: { ...defaultBoard },
+        score: 0,
+        occupied: {},
+      },
     ],
     currentPlayerIndex: 0,
     dice: [],
@@ -69,15 +88,27 @@ export const gameMachine = setup({
       on: {
         START_GAME: {
           target: "playing",
-          actions: assign((_, event) => ({
+          actions: assign(({ event }) => ({
             diceCount: event.type === "START_GAME" ? event.diceCount ?? 5 : 5,
             rollsLeft: 3,
             dice: [],
             keptDice: [],
             currentPlayerIndex: 0,
             players: [
-              { id: "player1", pawns: 12, board: { ...defaultBoard }, score: 0, occupied: {} },
-              { id: "player2", pawns: 12, board: { ...defaultBoard }, score: 0, occupied: {} },
+              {
+                id: "player1",
+                pawns: 12,
+                board: { ...defaultBoard },
+                score: 0,
+                occupied: {},
+              },
+              {
+                id: "player2",
+                pawns: 12,
+                board: { ...defaultBoard },
+                score: 0,
+                occupied: {},
+              },
             ],
           })),
         },
@@ -103,17 +134,19 @@ export const gameMachine = setup({
                 ROLL: {
                   target: "rolling",
                   guard: "hasRollsLeft",
-                  actions: assign((ctx) => ({ 
-                    rollsLeft: ctx.rollsLeft - 1 
+                  actions: assign(({ context }) => ({
+                    rollsLeft: context.rollsLeft - 1,
                   })),
                 },
               },
             },
             rolling: {
-              entry: assign((ctx) => ({
+              entry: assign(({ context }) => ({
                 dice: (() => {
-                  const newRoll = rollDice(ctx.diceCount - ctx.keptDice.length);
-                  return [...ctx.keptDice, ...newRoll];
+                  const newRoll = rollDice(
+                    context.diceCount - context.keptDice.length
+                  );
+                  return [...context.keptDice, ...newRoll];
                 })(),
               })),
               always: "choosePhase",
@@ -121,36 +154,41 @@ export const gameMachine = setup({
             choosePhase: {
               on: {
                 KEEP: {
-                  actions: assign((ctx, event) => ({
-                    keptDice: event.type === "KEEP"
-                      ? event.diceIndexes.map((i) => ctx.dice[i])
-                      : ctx.keptDice,
+                  actions: assign(({ context, event }) => ({
+                    keptDice:
+                      event.type === "KEEP"
+                        ? event.diceIndexes.map((i) => context.dice[i])
+                        : context.keptDice,
                   })),
                 },
                 ROLL: {
                   target: "rolling",
                   guard: "hasRollsLeft",
-                  actions: assign((ctx) => ({ 
-                    rollsLeft: ctx.rollsLeft - 1 
+                  actions: assign(({ context }) => ({
+                    rollsLeft: context.rollsLeft - 1,
                   })),
                 },
-                CHOOSE_COMBINATION: [{
-                  target: "yamPredator",
-                  guard: "canUseYamPredator",
-                }, {
-                  target: "placePawn",
-                  guard: "validCombination",
-                  actions: assign((ctx, event) => {
-                    if (event.type !== "CHOOSE_COMBINATION") return {};
-                    const players = [...ctx.players];
-                    const cur = players[ctx.currentPlayerIndex];
-                    if (!cur.board[event.combination]) {
-                      cur.board[event.combination] = true;
-                      cur.pawns -= 1;
-                    }
-                    return { players };
-                  }),
-                }],
+                CHOOSE_COMBINATION: [
+                  {
+                    target: "yamPredator",
+                    guard: "canUseYamPredator",
+                  },
+                  {
+                    target: "placePawn",
+                    guard: "validCombination",
+                    actions: assign(({ context, event }) => {
+                      if (event.type !== "CHOOSE_COMBINATION") return {};
+                      const players = [...context.players];
+                      const cur = players[context.currentPlayerIndex];
+                      const key = event.combination as Combination;
+                      if (!cur.board[key]) {
+                        cur.board[key] = true;
+                        cur.pawns -= 1;
+                      }
+                      return { players };
+                    }),
+                  },
+                ],
               },
             },
             yamPredator: {
@@ -178,11 +216,13 @@ export const gameMachine = setup({
         checkEnd: {
           always: [
             {
-              cond: (ctx) => ctx.players[ctx.currentPlayerIndex].score === 999,
+              guard: ({ context }) =>
+                context.players[context.currentPlayerIndex].score === 999,
               target: "gameOver",
             },
             {
-              cond: (ctx) => ctx.players[ctx.currentPlayerIndex].pawns === 0,
+              guard: ({ context }) =>
+                context.players[context.currentPlayerIndex].pawns === 0,
               target: "gameOver",
             },
             { target: "switchPlayer" },
@@ -190,8 +230,8 @@ export const gameMachine = setup({
         },
 
         switchPlayer: {
-          entry: assign((ctx) => ({
-            currentPlayerIndex: 1 - ctx.currentPlayerIndex,
+          entry: assign(({ context }) => ({
+            currentPlayerIndex: 1 - context.currentPlayerIndex,
           })),
           always: "playerTurn",
         },
