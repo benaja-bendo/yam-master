@@ -1,10 +1,10 @@
-import { interpret, InterpreterFrom } from 'xstate';
+import { createActor, ActorRefFrom } from 'xstate';
 import { Request, Response } from 'express';
-import { gameMachine } from '@yamaster/logic';
+import { gameMachine } from '@yamaster/logic/src/gameMachine';
 import { WebSocketManager } from '../config/websocket';
 
 export class GameController {
-  private games: Map<string, InterpreterFrom<typeof gameMachine>>;
+  private games: Map<string, ActorRefFrom<typeof gameMachine>>;
   private wsManager: WebSocketManager;
 
   constructor(wsManager: WebSocketManager) {
@@ -17,16 +17,18 @@ export class GameController {
       gameId: string;
       diceCount?: number;
     };
-
+    
     if (this.games.has(gameId)) {
       return res.status(400).json({ error: 'Game already exists' });
     }
 
-    const service = interpret(gameMachine)
-      .onTransition((state) => {
-        this.wsManager.notifyGameUpdate(gameId, service);
-      })
-      .start();
+    const service = createActor(gameMachine, {
+      systemId: gameId,
+      input: { diceCount },
+    }).start();
+    service.subscribe((state) => {
+      this.wsManager.notifyGameUpdate(gameId, service);
+    });
 
     service.send({ type: 'START_GAME', diceCount });
     this.games.set(gameId, service);

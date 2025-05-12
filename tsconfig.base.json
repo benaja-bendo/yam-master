@@ -2,12 +2,12 @@
   "compilerOptions": {
     "target": "ES2022",
     "lib": [
-      "ES2022",
       "DOM",
       "DOM.Iterable",
       "ESNext"
     ],
     "allowJs": true,
+    "checkJs": true,
     "module": "ES2022",
     "moduleResolution": "bundler",
     "strict": true,
@@ -18,18 +18,21 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@logic/*": [
+      "@yamaster/logic": [
         "packages/logic/src/*"
-      ],
-      "@types/*": [
-        "packages/types/src/*"
-      ],
-      "@ui/*": [
-        "packages/ui/src/*"
-      ],
-      "@utils/*": [
-        "packages/utils/src/*"
       ]
-    }
-  }
+    },
+    "outDir": "./dist",
+    "rootDir": "./src",
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.spec.ts",
+    "src/**/*.spec.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

@@ -1,7 +1,7 @@
 import { Server as HttpServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
-import { InterpreterFrom } from 'xstate';
-import { gameMachine } from '@yamaster/logic';
+import { ActorRefFrom } from 'xstate';
+import { gameMachine } from '@yamaster/logic/src/gameMachine';
 
 interface GameConnection {
   gameId: string;
@@ -66,7 +66,7 @@ export class WebSocketManager {
     });
   }
 
-  public notifyGameUpdate(gameId: string, service: InterpreterFrom<typeof gameMachine>) {
+  public notifyGameUpdate(gameId: string, service: ActorRefFrom<typeof gameMachine>) {
     const connection = this.gameConnections.get(gameId);
     if (!connection) return;
 

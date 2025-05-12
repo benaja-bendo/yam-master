@@ -3,7 +3,7 @@ import { rollDice, evaluateCombinations } from "./utils";
 import { GameContext, GameEvent, defaultBoard, Combination } from "./types";
 import { checkAlignment, applyYamPredator } from "./board";
 
-export const SuperGameMachine = setup({
+export const gameMachine = setup({
   types: {
     context: {} as GameContext,
     events: {} as GameEvent,
