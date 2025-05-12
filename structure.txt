@@ -2,12 +2,25 @@
 ├── apps
 │   ├── backend
 │   │   ├── src
+│   │   │   ├── config
+│   │   │   │   ├── server.ts
+│   │   │   │   └── websocket.ts
+│   │   │   ├── controllers
+│   │   │   │   ├── game.controller.ts
+│   │   │   │   └── health.controller.ts
+│   │   │   ├── routes
+│   │   │   │   ├── health.ts
+│   │   │   │   └── index.ts
 │   │   │   ├── index.ts
-│   │   │   └── router.ts
+│   │   │   └── websocket.ts
+│   │   ├── tests
+│   │   │   └── health.test.ts
 │   │   ├── package-lock.json
 │   │   ├── package.json
+│   │   ├── tsconfig.build.json
 │   │   └── tsconfig.json
 │   └── frontend
+│       ├── machines
 │       ├── public
 │       │   └── vite.svg
 │       ├── src
@@ -18,23 +31,45 @@
 │       │   ├── index.css
 │       │   ├── main.tsx
 │       │   └── vite-env.d.ts
+│       ├── tests
+│       │   ├── App.test.tsx
+│       │   └── setup.ts
 │       ├── eslint.config.js
 │       ├── index.html
+│       ├── package-lock.json
 │       ├── package.json
 │       ├── README.md
 │       ├── tsconfig.app.json
 │       ├── tsconfig.json
 │       ├── tsconfig.node.json
-│       └── vite.config.ts
+│       ├── vite.config.ts
+│       └── vitest.config.ts
 ├── packages
 │   ├── logic
-│   │   └── src
-│   │       └── gameMachine.ts
+│   │   ├── src
+│   │   │   ├── gameMachine.ts
+│   │   │   ├── index.ts
+│   │   │   ├── types.ts
+│   │   │   └── utils.ts
+│   │   ├── test
+│   │   │   ├── gameMachine.test.ts
+│   │   │   └── utils.test.ts
+│   │   ├── package-lock.json
+│   │   ├── package.json
+│   │   └── tsconfig.json
 │   ├── types
-│   │   └── src
+│   │   ├── src
+│   │   │   └── index.ts
+│   │   └── tsconfig.json
 │   ├── ui
-│   │   └── package.json
+│   │   ├── components
+│   │   ├── package-lock.json
+│   │   ├── package.json
+│   │   └── tsconfig.json
 │   └── utils
+│       ├── src
+│       │   └── index.ts
+│       └── tsconfig.json
 ├── tests
 ├── package.json
 ├── pnpm-lock.yaml
@@ -42,5 +77,3 @@
 ├── README.md
 ├── structure.txt
 └── tsconfig.base.json
-
-16 directories, 28 files
