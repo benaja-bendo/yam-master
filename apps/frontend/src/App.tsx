@@ -1,35 +1,49 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React from 'react';
+import {
+    FaQuestionCircle,
+    FaCog,
+    FaInstagram,
+    FaTwitter,
+} from 'react-icons/fa';
+import {
+    Container,
+    Header,
+    HelpIcon,
+    SettingsIcon,
+    Title,
+    Main,
+    Button,
+    Footer,
+    FooterLink,
+    Socials,
+} from './App.styles';
 
-function App() {
-  const [count, setCount] = useState(0)
+const App: React.FC = () => {
+    return (
+        <Container>
+            <Header>
+                <HelpIcon><FaQuestionCircle /></HelpIcon>
+                <SettingsIcon><FaCog /></SettingsIcon>
+            </Header>
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+            <Main>
+                <Title>Snakescrabble</Title>
+                <Button variant="primary">New Game</Button>
+                <Button variant="secondary">Mode : Single</Button>
+                <Button variant="secondary">Level : Easy</Button>
+                <Button variant="dark">Invite Player</Button>
+            </Main>
 
-export default App
+            <Footer>
+                <FooterLink href="#">Contact</FooterLink>
+                <FooterLink href="#">Privacy Policy</FooterLink>
+                <Socials>
+                    <a href="#"><FaInstagram /></a>
+                    <a href="#" style={{ marginLeft: 12 }}><FaTwitter /></a>
+                </Socials>
+            </Footer>
+        </Container>
+    );
+};
+
+export default App;
