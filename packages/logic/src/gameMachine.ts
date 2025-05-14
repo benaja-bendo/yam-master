@@ -250,7 +250,6 @@ export const gameMachine = setup({
 
         gameOver: {
           id: "gameOver",
-          type: "final",
         },
       },
       onDone: "idle",
