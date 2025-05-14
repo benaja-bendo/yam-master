@@ -2,21 +2,14 @@ import express from "express";
 import { createServer } from "http";
 import { serverConfig } from "./config/server";
 import routes from "./routes/index";
+import { gameRouter } from "./routes/game.js";
 
 const app = express();
 const server = createServer(app);
-
-// Middleware pour parser le JSON
 app.use(express.json());
-
-// Configuration WebSocket
-//const server = createServer(app);
-//const wsManager = setupWebSocket(server);
-// Initialisation du contrôleur avec le gestionnaire WebSocket
-//const gameController = new GameController(wsManager);
-
 // Configuration des routes
 app.use("/api", routes);
+app.use('/api/game', gameRouter);
 
 // Démarrage du serveur
 server.listen(serverConfig.port, () => {
