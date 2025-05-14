@@ -1,95 +1,82 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { createActor } from 'xstate';
 import { getShortestPaths } from '@xstate/graph';
 import { gameMachine } from '../src/gameMachine';
-import type { Combination, GameEvent } from '../src/types';
-import { vi } from 'vitest'
+import type { GameEvent, Cell, Combination } from '../src/types';
 
+// ---- 1. Mock déterministe pour toujours obtenir un Yam ----
 vi.mock('../src/utils', () => ({
-  // À chaque lancer, on renvoie un Yam (5×6)
-  rollDice: () => [6, 6, 6, 6, 6],
-  // On dit toujours que c’est un Yam valide
+  rollDice: (_count: number) => [6, 6, 6, 6, 6],
   evaluateCombinations: () => ['yam'] as Combination[],
 }));
 
-// Configuration des événements tests
-const eventCases = {
-  START_GAME: () => ({ type: 'START_GAME', diceCount: 5 }),
-  ROLL: () => ({ type: 'ROLL' }),
-  KEEP: () => ({ type: 'KEEP', diceIndexes: [0] }),
-  CHOOSE_COMBINATION: () => ({ 
-    type: 'CHOOSE_COMBINATION',
-    combination: 'yam',
-    cell: { x: 0, y: 0 }
-  }),
-  USE_YAM_PREDATOR: () => ({ type: 'USE_YAM_PREDATOR', cell: { x: 0, y: 0 } }),
-  ACCEPT_COMBINATION: () => ({ type: 'ACCEPT_COMBINATION', cell: { x: 0, y: 0 } })
+// ---- 2. Définition des événements réutilisables ----
+const Events = {
+  START:        { type: 'START_GAME' as const, diceCount: 5 },
+  ROLL:         { type: 'ROLL' as const },
+  KEEP:         { type: 'KEEP' as const, diceIndexes: [0] },
+  CHOOSE_YAM:   { type: 'CHOOSE_COMBINATION' as const, combination: 'yam' as const, cell: { x: 0, y: 0 } as Cell },
+  USE_PREDATOR: { type: 'USE_YAM_PREDATOR' as const, cell: { x: 0, y: 0 } as Cell },
+  ACCEPT:       { type: 'ACCEPT_COMBINATION' as const, cell: { x: 0, y: 0 } as Cell },
 };
 
-// Génération des chemins de test
+// ---- 3. Construction des plus courts chemins statiques ----
 const shortestPaths = getShortestPaths(gameMachine, {
   events: [
-    { type: 'START_GAME', diceCount: 5 },
-    { type: 'ROLL' },
-    { type: 'KEEP', diceIndexes: [0] },
-    { type: 'CHOOSE_COMBINATION', combination: 'yam', cell: { x: 0, y: 0 } },
-    { type: 'USE_YAM_PREDATOR', cell: { x: 0, y: 0 } },
-    { type: 'ACCEPT_COMBINATION', cell: { x: 0, y: 0 } }
-  ]
+    Events.START,
+    Events.ROLL,
+    Events.KEEP,
+    Events.CHOOSE_YAM,
+    Events.USE_PREDATOR,
+    Events.ACCEPT,
+  ],
 });
 
-describe('Game Machine - XState Graph Tests', () => {
-  // Test de tous les chemins possibles
-  shortestPaths.map((path) => {
-    it(`Reaches ${path.state.value} via ${path.steps.map(s => s.event.type).join(' → ')}`, () => {
-      const actor = createActor(gameMachine).start();
-      
-      path.steps.forEach((step) => {
-        actor.send(step.event);
-      });
+describe('Game Machine – XState Graph Tests', () => {
+  // 4. Test de tous les chemins statiques
+  shortestPaths.forEach((path) => {
+    it(
+      `Atteint ${JSON.stringify(path.state.value)} via ${path.steps
+        .map((s) => s.event.type)
+        .join(' → ')}`,
+      () => {
+        const actor = createActor(gameMachine).start();
+        actor.send(Events.START);
+        path.steps.forEach((step) => actor.send(step.event));
+        const snapshot = actor.getSnapshot();
 
-      expect(actor.getSnapshot().value).toEqual(path.state.value);
-    });
-  });
-
-  // Test de couverture des états
-  it('should cover all state nodes', () => {
-    const coveredStates = new Set(
-      shortestPaths.flatMap(p =>
-        Object.keys(p.state.value)
-      )
+        // On compare directement la valeur de l'état
+        expect(snapshot.value).toEqual(path.state.value);
+      }
     );
-    
-    const allStates = Object.keys(
-      gameMachine.states
-    ).flatMap(s => [
-      s,
-      ...Object.keys(gameMachine.states[s].states || {})
-    ]);
-
-    // allStates.forEach(state => {
-    //   expect(coveredStates.has(state)).toBeTruthy();
-    // });
   });
 
-  // Test spécifique pour la condition de victoire
-  it('should reach gameOver when score is 999', () => {
+  // 5. Test de la victoire par alignement de 5 pions
+  it('doit entrer en gameOver quand on complète un alignement de 5 pions', () => {
     const actor = createActor(gameMachine).start();
+    actor.send(Events.START);
 
-    actor.send({ type: 'START_GAME', diceCount: 5 });
-    actor.send({ type: 'ROLL' });
-    actor.send({
-      type: 'CHOOSE_COMBINATION',
-      combination: 'yam',
-      cell: { x: 0, y: 0 }
-    });
-    actor.send({ type: 'USE_YAM_PREDATOR', cell: { x: 0, y: 0 } });
-    // Attendre que la transition vers gameOver soit complète
-    //expect(actor.getSnapshot().context.players[0].score).toBe(999);
+    // Pré-remplir 4 pions alignés verticalement pour player1
+    const snap1 = actor.getSnapshot();
+    snap1.context.players[0].occupied = {
+      '0:1': true,
+      '0:2': true,
+      '0:3': true,
+      '0:4': true,
+    };
 
-    // expect(actor.getSnapshot().value).toEqual({
-    //   playing: { checkEnd: 'gameOver' }
-    // });
-    // expect(actor.getSnapshot().context.players[0].score).toBe(999);
+    // On reste bien sur le tour du player1
+    expect(snap1.context.currentPlayerIndex).toBe(0);
+
+    // Lancer, choix du Yam et pose du 5ᵉ pion
+    actor.send(Events.ROLL);
+    actor.send(Events.CHOOSE_YAM);
+    actor.send(Events.ACCEPT);
+
+    const snap2 = actor.getSnapshot();
+    // Vérifie qu'on est dans playing.gameOver
+    expect(snap2.matches({ playing: 'gameOver' })).toBe(true);
+    // Le score passe à 999 (victoire immédiate)
+    expect(snap2.context.players[0].score).toBe(999);
   });
 });
