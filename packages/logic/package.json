@@ -4,6 +4,7 @@
   "description": "",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "type": "module",
   "scripts": {
     "build": "tsc -b",
     "test": "vitest run",
@@ -14,11 +15,13 @@
   "license": "ISC",
   "packageManager": "pnpm@10.9.0",
   "dependencies": {
-    "@xstate/test": "^0.5.1",
-    "xstate": "^5.19.2"
+    "@xstate/graph": "^3.0.3",
+    "vite": "^6.3.5",
+    "xstate": "^5.19.3"
   },
   "devDependencies": {
     "@types/node": "^22.15.17",
+    "@xstate/test": "1.0.0-beta.5",
     "typescript": "^5.8.3",
     "vitest": "^3.1.3"
   }

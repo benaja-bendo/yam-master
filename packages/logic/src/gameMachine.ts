@@ -1,7 +1,7 @@
 import { assign, setup } from "xstate";
 import { rollDice, evaluateCombinations } from "./utils";
-import { GameContext, GameEvent, defaultBoard, Combination } from "./types";
-import { checkAlignment, applyYamPredator } from "./board";
+import type { GameContext, GameEvent, Combination } from "./types";
+import { checkAlignment, applyYamPredator, defaultBoard } from "./board";
 
 export const gameMachine = setup({
   types: {
@@ -85,6 +85,7 @@ export const gameMachine = setup({
   },
   states: {
     idle: {
+      id: "idle",
       on: {
         START_GAME: {
           target: "playing",
@@ -116,12 +117,15 @@ export const gameMachine = setup({
     },
 
     playing: {
+      id: "playing",
       initial: "playerTurn",
       states: {
         playerTurn: {
+          id: "playerTurn",
           initial: "start",
           states: {
             start: {
+              id: "start",
               entry: assign(() => ({
                 rollsLeft: 3,
                 dice: [],
@@ -130,6 +134,7 @@ export const gameMachine = setup({
               always: "rollPhase",
             },
             rollPhase: {
+              id: "rollPhase",
               on: {
                 ROLL: {
                   target: "rolling",
@@ -141,6 +146,7 @@ export const gameMachine = setup({
               },
             },
             rolling: {
+              id: "rolling",
               entry: assign(({ context }) => ({
                 dice: (() => {
                   const newRoll = rollDice(
@@ -152,11 +158,12 @@ export const gameMachine = setup({
               always: "choosePhase",
             },
             choosePhase: {
+              id: "choosePhase",
               on: {
                 KEEP: {
                   actions: assign(({ context, event }) => ({
                     keptDice:
-                      event.type === "KEEP"
+                      event.type === "KEEP" && event.diceIndexes
                         ? event.diceIndexes.map((i) => context.dice[i])
                         : context.keptDice,
                   })),
@@ -192,6 +199,7 @@ export const gameMachine = setup({
               },
             },
             yamPredator: {
+              id: "yamPredator",
               on: {
                 USE_YAM_PREDATOR: {
                   target: "resolve",
@@ -200,6 +208,7 @@ export const gameMachine = setup({
               },
             },
             placePawn: {
+              id: "placePawn",
               on: {
                 ACCEPT_COMBINATION: {
                   target: "resolve",
@@ -208,12 +217,14 @@ export const gameMachine = setup({
               },
             },
             resolve: {
+              id: "resolve",
               always: "#yamMaster.playing.checkEnd",
             },
           },
         },
 
         checkEnd: {
+          id: "checkEnd",
           always: [
             {
               guard: ({ context }) =>
@@ -230,6 +241,7 @@ export const gameMachine = setup({
         },
 
         switchPlayer: {
+          id: "switchPlayer",
           entry: assign(({ context }) => ({
             currentPlayerIndex: 1 - context.currentPlayerIndex,
           })),
@@ -237,6 +249,7 @@ export const gameMachine = setup({
         },
 
         gameOver: {
+          id: "gameOver",
           type: "final",
         },
       },

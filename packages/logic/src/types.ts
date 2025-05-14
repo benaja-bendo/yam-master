@@ -15,6 +15,15 @@ export interface Player {
   score: number; // points gagnés avec les alignements
   occupied: Record<string, boolean>; // positions des pions sur la grille (format "x:y")
 }
+export type Cell = { x: number; y: number };
+export type Board = Record<string, boolean>; // format "x:y" => true si la case est occupée
+// état du jeu
+export type GameState =
+  | { value: 'idle' }
+  | { value: 'rolling'; dice: number[] }
+  | { value: 'choosing'; keptDice: number[]; dice: number[] }
+  | { value: 'checking'; keptDice: number[]; dice: number[] }
+  | { value: 'playing'; checkEnd: 'gameOver' | 'nextPlayer' | 'nextTurn' };
 
 export interface GameContext {
   players: Player[];
@@ -29,17 +38,12 @@ export type GameEvent =
   | { type: 'START_GAME'; diceCount?: number }
   | { type: 'ROLL' }
   | { type: 'KEEP'; diceIndexes: number[] }
-  | { type: 'CHOOSE_COMBINATION'; combination: Combination }
-  | { type: 'ACCEPT_COMBINATION'; cell: { x: number; y: number } }
-  | { type: 'USE_YAM_PREDATOR'; cell: { x: number; y: number } };
+  | { type: 'CHOOSE_COMBINATION'; combination: Combination; cell: Cell }
+  | { type: 'ACCEPT_COMBINATION'; cell: Cell}
+  | { type: 'USE_YAM_PREDATOR'; cell: Cell };
 
-export const defaultBoard: Record<Combination, boolean> = {
-  brelan: false,
-  full: false,
-  carre: false,
-  yam: false,
-  suite: false,
-  'sum<=8': false,
-  sec: false,
-  defi: false,
-};
+  export type GameAction =
+  | { type: 'START_GAME'; diceCount?: number }
+  | { type: 'ROLL'; dice: number[] }
+  | { type: 'KEEP'; keptDice: number[] }
+  | { type: 'CHOOSE_COMBINATION'; combination: Combination; cell: Cell };

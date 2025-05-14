@@ -1,7 +1,15 @@
-import { Player } from './types';
+import { Player, Combination, Cell, Board } from "./types";
 
-type Cell = { x: number; y: number };
-type Board = Record<string, boolean>;
+export const defaultBoard: Record<Combination, boolean> = {
+  brelan: false,
+  full: false,
+  carre: false,
+  yam: false,
+  suite: false,
+  "sum<=8": false,
+  sec: false,
+  defi: false,
+};
 
 /**
  * Vérifie si une cellule fait partie d'un alignement et retourne les points gagnés
@@ -9,9 +17,9 @@ type Board = Record<string, boolean>;
  */
 export function checkAlignment(board: Board, cell: Cell): number {
   const directions = [
-    { dx: 1, dy: 0 },  // horizontal
-    { dx: 0, dy: 1 },  // vertical
-    { dx: 1, dy: 1 },  // diagonale \
+    { dx: 1, dy: 0 }, // horizontal
+    { dx: 0, dy: 1 }, // vertical
+    { dx: 1, dy: 1 }, // diagonale \
     { dx: 1, dy: -1 }, // diagonale /
   ];
 
@@ -46,7 +54,11 @@ export function checkAlignment(board: Board, cell: Cell): number {
 /**
  * Applique le Yam Predator : retire un pion adverse
  */
-export function applyYamPredator(players: Player[], currentPlayerIndex: number, cell: Cell): Player[] {
+export function applyYamPredator(
+  players: Player[],
+  currentPlayerIndex: number,
+  cell: Cell
+): Player[] {
   const opponent = players[1 - currentPlayerIndex];
   const key = `${cell.x}:${cell.y}`;
 
