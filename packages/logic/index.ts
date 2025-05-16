@@ -1,2 +1,2 @@
 export * from './src/gameMachine';
-export * from './src/types';
+export type * from "./src/types";

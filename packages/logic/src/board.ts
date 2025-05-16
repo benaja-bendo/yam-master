@@ -12,6 +12,26 @@ export const defaultBoard: Record<Combination, boolean> = {
 };
 
 /**
+ * Crée les joueurs par défaut pour une nouvelle partie
+ */
+export const defaultPlayers = (): Player[] => [
+  {
+    id: "player1",
+    pawns: 12,
+    board: { ...defaultBoard },
+    score: 0,
+    occupied: {},
+  },
+  {
+    id: "player2",
+    pawns: 12,
+    board: { ...defaultBoard },
+    score: 0,
+    occupied: {},
+  },
+];
+
+/**
  * Vérifie si une cellule fait partie d'un alignement et retourne les points gagnés
  * @returns 999 pour un alignement de 5, sinon le nombre de points (1 pour 3 pions, 2 pour 4 pions)
  */

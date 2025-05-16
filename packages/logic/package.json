@@ -11,7 +11,7 @@
     "test:watch": "vitest watch"
   },
   "keywords": [],
-  "author": "",
+  "author": "benaja-bendo",
   "license": "ISC",
   "packageManager": "pnpm@10.9.0",
   "dependencies": {

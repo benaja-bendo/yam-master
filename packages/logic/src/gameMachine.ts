@@ -1,258 +1,248 @@
-import { assign, setup } from "xstate";
+import { createMachine, assign } from "xstate";
 import { rollDice, evaluateCombinations } from "./utils";
-import type { GameContext, GameEvent, Combination } from "./types";
-import { checkAlignment, applyYamPredator, defaultBoard } from "./board";
+import { checkAlignment, applyYamPredator, defaultPlayers } from "./board";
+import type { GameContext, GameEvent } from "./types";
 
-export const gameMachine = setup({
-  types: {
-    context: {} as GameContext,
-    events: {} as GameEvent,
-  },
-  actions: {
-    placePawn: assign(({ context, event }) => {
-      if (
-        event.type !== "ACCEPT_COMBINATION" &&
-        event.type !== "USE_YAM_PREDATOR"
-      ) {
-        return { players: context.players };
-      }
+// initial context
+const initialContext: GameContext = {
+  mode: "pvp",
+  botDifficulty: undefined,
+  players: defaultPlayers(),
+  currentPlayerIndex: 0,
+  diceCount: 5,
+  dice: [],
+  keptDice: [],
+  rollsLeft: 3,
+};
 
-      if (event.type === "USE_YAM_PREDATOR") {
-        return {
-          players: applyYamPredator(
-            context.players,
-            context.currentPlayerIndex,
-            event.cell
-          ),
-        };
-      }
-
-      const updatedPlayers = [...context.players];
-      const player = updatedPlayers[context.currentPlayerIndex];
-      const key = `${event.cell.x}:${event.cell.y}`;
-
-      if (player.occupied[key]) {
-        return { players: context.players };
-      }
-
-      player.occupied[key] = true;
-      player.pawns--;
-      const gained = checkAlignment(player.occupied, event.cell);
-      if (gained === 999) {
-        player.score = 999;
-      } else {
-        player.score += gained;
-      }
-
-      return { players: updatedPlayers };
-    }),
-  },
-  guards: {
-    hasRollsLeft: ({ context }) => context.rollsLeft > 0,
-    validCombination: ({ context, event }) =>
-      event.type === "CHOOSE_COMBINATION" &&
-      evaluateCombinations(context.dice).includes(event.combination),
-    canUseYamPredator: ({ context, event }) =>
-      event.type === "CHOOSE_COMBINATION" &&
-      event.combination === "yam" &&
-      evaluateCombinations(context.dice).includes("yam"),
-  },
-}).createMachine({
-  id: "yamMaster",
-  initial: "idle",
-  context: {
-    players: [
-      {
-        id: "player1",
-        pawns: 12,
-        board: { ...defaultBoard },
-        score: 0,
-        occupied: {},
-      },
-      {
-        id: "player2",
-        pawns: 12,
-        board: { ...defaultBoard },
-        score: 0,
-        occupied: {},
-      },
-    ],
-    currentPlayerIndex: 0,
-    dice: [],
-    keptDice: [],
-    rollsLeft: 3,
-    diceCount: 5,
-  },
-  states: {
-    idle: {
-      id: "idle",
-      on: {
-        START_GAME: {
-          target: "playing",
-          actions: assign(({ event }) => ({
-            diceCount: event.type === "START_GAME" ? event.diceCount ?? 5 : 5,
-            rollsLeft: 3,
-            dice: [],
-            keptDice: [],
-            currentPlayerIndex: 0,
-            players: [
-              {
-                id: "player1",
-                pawns: 12,
-                board: { ...defaultBoard },
-                score: 0,
-                occupied: {},
-              },
-              {
-                id: "player2",
-                pawns: 12,
-                board: { ...defaultBoard },
-                score: 0,
-                occupied: {},
-              },
-            ],
-          })),
-        },
-      },
+export const gameMachine = createMachine(
+  {
+    id: "yamMaster",
+    initial: "idle",
+    types: {
+      events: {} as GameEvent,
+      context: {} as GameContext,
     },
-
-    playing: {
-      id: "playing",
-      initial: "playerTurn",
-      states: {
-        playerTurn: {
-          id: "playerTurn",
-          initial: "start",
-          states: {
-            start: {
-              id: "start",
-              entry: assign(() => ({
-                rollsLeft: 3,
-                dice: [],
-                keptDice: [],
-              })),
-              always: "rollPhase",
-            },
-            rollPhase: {
-              id: "rollPhase",
-              on: {
-                ROLL: {
-                  target: "rolling",
-                  guard: "hasRollsLeft",
-                  actions: assign(({ context }) => ({
-                    rollsLeft: context.rollsLeft - 1,
-                  })),
-                },
-              },
-            },
-            rolling: {
-              id: "rolling",
-              entry: assign(({ context }) => ({
-                dice: (() => {
-                  const newRoll = rollDice(
-                    context.diceCount - context.keptDice.length
-                  );
-                  return [...context.keptDice, ...newRoll];
-                })(),
-              })),
-              always: "choosePhase",
-            },
-            choosePhase: {
-              id: "choosePhase",
-              on: {
-                KEEP: {
-                  actions: assign(({ context, event }) => ({
-                    keptDice:
-                      event.type === "KEEP" && event.diceIndexes
-                        ? event.diceIndexes.map((i) => context.dice[i])
-                        : context.keptDice,
-                  })),
-                },
-                ROLL: {
-                  target: "rolling",
-                  guard: "hasRollsLeft",
-                  actions: assign(({ context }) => ({
-                    rollsLeft: context.rollsLeft - 1,
-                  })),
-                },
-                CHOOSE_COMBINATION: [
-                  {
-                    target: "yamPredator",
-                    guard: "canUseYamPredator",
-                  },
-                  {
-                    target: "placePawn",
-                    guard: "validCombination",
-                    actions: assign(({ context, event }) => {
-                      if (event.type !== "CHOOSE_COMBINATION") return {};
-                      const players = [...context.players];
-                      const cur = players[context.currentPlayerIndex];
-                      const key = event.combination as Combination;
-                      if (!cur.board[key]) {
-                        cur.board[key] = true;
-                        cur.pawns -= 1;
-                      }
-                      return { players };
-                    }),
-                  },
-                ],
-              },
-            },
-            yamPredator: {
-              id: "yamPredator",
-              on: {
-                USE_YAM_PREDATOR: {
-                  target: "resolve",
-                  actions: "placePawn",
-                },
-              },
-            },
-            placePawn: {
-              id: "placePawn",
-              on: {
-                ACCEPT_COMBINATION: {
-                  target: "resolve",
-                  actions: "placePawn",
-                },
-              },
-            },
-            resolve: {
-              id: "resolve",
-              always: "#yamMaster.playing.checkEnd",
-            },
+    context: initialContext,
+    states: {
+      // État initial : on attend la demande de création de partie
+      idle: {
+        on: {
+          START_GAME: {
+            target: "setup",
           },
         },
+      },
 
-        checkEnd: {
-          id: "checkEnd",
-          always: [
-            {
-              guard: ({ context }) =>
-                context.players[context.currentPlayerIndex].score === 999,
-              target: "gameOver",
-            },
-            {
-              guard: ({ context }) =>
-                context.players[context.currentPlayerIndex].pawns === 0,
-              target: "gameOver",
-            },
-            { target: "switchPlayer" },
-          ],
-        },
+      // Selon le mode, on attend un second joueur ou on entre directement en jeu
+      setup: {
+        // Initialisation des joueurs et de l'index
+        entry: assign({
+          // Initialisation des joueurs et de l'index
+          players: () => defaultPlayers(),
+          currentPlayerIndex: () => 0,
+        }),
+        always: [
+          { target: "waiting", guard: "isPVP" },
+          { target: "playing", guard: "isPVB" },
+        ],
+      },
 
-        switchPlayer: {
-          id: "switchPlayer",
-          entry: assign(({ context }) => ({
-            currentPlayerIndex: 1 - context.currentPlayerIndex,
-          })),
-          always: "playerTurn",
-        },
-
-        gameOver: {
-          id: "gameOver",
+      // PvP uniquement : on attend que le joueur2 envoie JOIN
+      waiting: {
+        on: {
+          JOIN: {
+            target: "playing",
+            guard: ({ event }) =>
+              event.type === "JOIN" && event.playerId === "player2",
+          },
         },
       },
-      onDone: "idle",
+
+      // Boucle de jeu (PvP ou PvB)
+      playing: {
+        initial: "playerTurn",
+        states: {
+          playerTurn: {
+            initial: "start",
+            states: {
+              start: {
+                entry: "resetRolls",
+                always: { target: "rollPhase" },
+              },
+              rollPhase: {
+                on: {
+                  ROLL: {
+                    target: "rolling",
+                    guard: "hasRollsLeft",
+                    actions: "decrementRolls",
+                  },
+                },
+              },
+              rolling: {
+                entry: "doRoll",
+                always: { target: "choosePhase" },
+              },
+              choosePhase: {
+                on: {
+                  KEEP: {
+                    actions: "doKeep",
+                  },
+                  ROLL: {
+                    target: "rolling",
+                    guard: "hasRollsLeft",
+                    actions: "decrementRolls",
+                  },
+                  CHOOSE_COMBINATION: [
+                    {
+                      target: "yamPredator",
+                      guard: "canUseYamPredator",
+                    },
+                    {
+                      target: "placePawn",
+                      guard: "validCombination",
+                      actions: "markCombinationOnBoard",
+                    },
+                  ],
+                },
+              },
+              yamPredator: {
+                on: {
+                  USE_YAM_PREDATOR: {
+                    target: "resolve",
+                    actions: "placePawn",
+                  },
+                },
+              },
+              placePawn: {
+                on: {
+                  ACCEPT_COMBINATION: {
+                    target: "resolve",
+                    actions: "placePawn",
+                  },
+                },
+              },
+              resolve: {
+                always: { target: "#yamMaster.playing.checkEnd" },
+              },
+            },
+          },
+
+          checkEnd: {
+            always: [
+              {
+                guard: "hasInstantWin",
+                target: "#yamMaster.gameOver",
+              },
+              {
+                guard: "hasNoPawnsLeft",
+                target: "#yamMaster.gameOver",
+              },
+              { target: "switchPlayer" },
+            ],
+          },
+
+          switchPlayer: {
+            entry: "advancePlayer",
+            always: { target: "playerTurn" },
+          },
+        },
+      },
+
+      // État terminal explicite (ne renvoie plus automatiquement en idle)
+      gameOver: {
+        type: "final",
+      },
     },
   },
-});
+  {
+    actions: {
+      // Roll logic
+      resetRolls: assign({
+        rollsLeft: 3,
+        dice: [],
+        keptDice: [],
+      }),
+      decrementRolls: assign({
+        rollsLeft: ({ context }) => context.rollsLeft - 1,
+      }),
+      doRoll: assign({
+        dice: ({ context }) => [
+          ...context.keptDice,
+          ...rollDice(context.diceCount - context.keptDice.length),
+        ],
+      }),
+      doKeep: assign({
+        keptDice: ({ context, event }) =>
+          event.type === "KEEP"
+            ? event.diceIndexes.map((i) => context.dice[i])
+            : context.keptDice,
+      }),
+
+      // Marquage de la combinaison sur le plateau (avant l'accept)
+      markCombinationOnBoard: assign({
+        players: ({ context, event }) => {
+          if (event.type !== "CHOOSE_COMBINATION") return context.players;
+          const players = [...context.players];
+          const cur = players[context.currentPlayerIndex];
+          if (!cur.board[event.combination]) {
+            cur.board[event.combination] = true;
+            cur.pawns -= 1;
+          }
+          return players;
+        },
+      }),
+
+      // Pose du pion et calcul des points
+      placePawn: assign({
+        players: ({ context, event }) => {
+          if (
+            event.type !== "ACCEPT_COMBINATION" &&
+            event.type !== "USE_YAM_PREDATOR"
+          ) {
+            return context.players;
+          }
+          let players = context.players.map((p) => ({ ...p }));
+          if (event.type === "USE_YAM_PREDATOR") {
+            players = applyYamPredator(
+              players,
+              context.currentPlayerIndex,
+              event.cell
+            );
+          } else {
+            const cur = players[context.currentPlayerIndex];
+            const key = `${event.cell.x}:${event.cell.y}`;
+            if (!cur.occupied[key]) {
+              cur.occupied[key] = true;
+              cur.pawns--;
+              const pts = checkAlignment(cur.occupied, event.cell);
+              cur.score = pts === 999 ? 999 : cur.score + pts;
+            }
+          }
+          return players;
+        },
+      }),
+
+      // Switch player index
+      advancePlayer: assign({
+        currentPlayerIndex: ({ context }) => 1 - context.currentPlayerIndex,
+      }),
+    },
+    guards: {
+      isPVP: ({ context }) => context.mode === "pvp",
+      isPVB: ({ context }) => context.mode === "pvb",
+      hasRollsLeft: ({ context }) => context.rollsLeft > 0,
+      validCombination: ({ context, event }) =>
+        event.type === "CHOOSE_COMBINATION" &&
+        evaluateCombinations(context.dice).includes(event.combination),
+      canUseYamPredator: ({ context, event }) =>
+        event.type === "CHOOSE_COMBINATION" &&
+        event.combination === "yam" &&
+        evaluateCombinations(context.dice).includes("yam"),
+      hasInstantWin: ({ context }) =>
+        context.players[context.currentPlayerIndex].score === 999,
+      hasNoPawnsLeft: ({ context }) =>
+        context.players[context.currentPlayerIndex].pawns === 0,
+    },
+  }
+);
