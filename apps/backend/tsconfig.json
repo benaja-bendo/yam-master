@@ -9,7 +9,7 @@
         "src/*"
       ],
       "@yamaster/logic": [
-        "../../packages/logic/src"
+        "../../packages/logic/dist"
       ]
     }
   },

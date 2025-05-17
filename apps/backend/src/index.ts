@@ -1,20 +1,23 @@
-import express from "express";
-import { createServer } from "http";
-import { serverConfig } from "./config/server";
-import routes from "./routes/index";
-import { gameRouter } from "./routes/game.js";
+import http from 'node:http';
+import express from 'express';
+import { setupExpress } from './config';
+import { apiRouter } from './routes';
+import { initWebSocket } from './websocket';
 
 const app = express();
-const server = createServer(app);
-app.use(express.json());
-// Configuration des routes
-app.use("/api", routes);
-app.use('/api/game', gameRouter);
+setupExpress(app);
+app.use('/api', apiRouter);
+
+const server = http.createServer(app);
+initWebSocket(server);
+
+const port = process.env.PORT || 3000;
+const env = process.env.NODE_ENV || 'development';
 
 // Démarrage du serveur
-server.listen(serverConfig.port, () => {
+server.listen(port, () => {
   console.log(
-    `Serveur en cours d'exécution => http://localhost:${serverConfig.port}`
+    `🚀 Backend listening on http://localhost:${port} en mode ${env}`
   );
 });
 

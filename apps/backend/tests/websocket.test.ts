@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import WebSocket from 'ws';
-import { WebSocketManager } from '../src/config/websocket';
+import { WebSocketManager } from '../src/websocket/websocket';
 import { Server } from 'http';
 import app from '../src/index';
 

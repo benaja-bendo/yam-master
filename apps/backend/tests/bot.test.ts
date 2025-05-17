@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import request from 'supertest';
-import { WebSocketManager } from '../src/config/websocket';
+import { WebSocketManager } from '../src/websocket/websocket';
 import { GameController } from '../src/controllers/game.controller';
 import app from '../src/index';
 

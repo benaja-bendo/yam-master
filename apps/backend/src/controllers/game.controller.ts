@@ -1,78 +1,77 @@
-import { createActor, ActorRefFrom } from 'xstate';
-import { Request, Response } from 'express';
-import { gameMachine } from '@yamaster/logic/src/gameMachine';
-import { WebSocketManager } from '../config/websocket';
+import type { Request, Response } from "express";
+import * as gameService from "../services/gameService";
+import { v4 as uuidv4 } from "uuid";
 
-export class GameController {
-  private games: Map<string, ActorRefFrom<typeof gameMachine>>;
-  private wsManager: WebSocketManager;
-
-  constructor(wsManager: WebSocketManager) {
-    this.games = new Map();
-    this.wsManager = wsManager;
-  }
-
-  async startGame(req: Request, res: Response) {
-    const { gameId, diceCount } = req.body as {
-      gameId: string;
-      diceCount?: number;
+export async function createGame(req: Request, res: Response) {
+  try {
+    const { mode, botDifficulty } = req.body as {
+      mode: "pvp" | "pvb";
+      botDifficulty?: "easy" | "hard";
     };
-    
-    if (this.games.has(gameId)) {
-      return res.status(400).json({ error: 'Game already exists' });
+
+    // 1. Validation basique
+    if (mode !== "pvp" && mode !== "pvb") {
+      return res.status(400).json({ error: "mode must be 'pvp' or 'pvb'" });
+    }
+    if (mode === "pvb" && !botDifficulty) {
+      return res
+        .status(400)
+        .json({ error: "botDifficulty is required when mode is 'pvb'" });
     }
 
-    const service = createActor(gameMachine, {
-      systemId: gameId,
-      input: { diceCount },
-    }).start();
-    service.subscribe((state) => {
-      this.wsManager.notifyGameUpdate(gameId, service);
-    });
+    // 2. Génération d'un nouvel ID de partie
+    const gameId = uuidv4();
 
-    service.send({ type: 'START_GAME', diceCount });
-    this.games.set(gameId, service);
+    // 3. Démarrage de la partie dans le service
+    const snapshot = gameService.createGame(gameId, { mode, botDifficulty });
 
-    return res.json({
+    // 4. Retour conforme au spec
+    return res.status(201).json({
       gameId,
-      state: service.getSnapshot().value,
-      context: service.getSnapshot().context,
+      state: {
+        value: snapshot.value,     // ex. "waiting" ou "playing"
+        context: snapshot.context, // toute la structure de contexte XState
+      },
     });
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message });
   }
+}
 
-  async getGameState(req: Request, res: Response) {
-    const { gameId } = req.params;
-    const service = this.games.get(gameId);
-
-    if (!service) {
-      return res.status(404).json({ error: 'Game not found' });
-    }
-
+export async function joinGame(req: Request, res: Response) {
+  try {
+    const { playerId } = req.body as { playerId: 'player2' };
+    const snapshot = gameService.joinGame(req.params.gameId, playerId);
     return res.json({
-      gameId,
-      state: service.getSnapshot().value,
-      context: service.getSnapshot().context,
+      state: snapshot.value,
+      context: snapshot.context,
     });
+  } catch (err: any) {
+    return res.status(404).json({ error: err.message });
   }
+}
 
-  async sendEvent(req: Request, res: Response) {
-    const { gameId } = req.params;
+export async function getGameState(req: Request, res: Response) {
+  try {
+    const snapshot = gameService.getGameState(req.params.gameId);
+    return res.json({
+      state: snapshot.value,
+      context: snapshot.context,
+    });
+  } catch (err: any) {
+    return res.status(404).json({ error: err.message });
+  }
+}
+
+export async function postGameEvent(req: Request, res: Response) {
+  try {
     const event = req.body;
-
-    const service = this.games.get(gameId);
-    if (!service) {
-      return res.status(404).json({ error: 'Game not found' });
-    }
-
-    try {
-      service.send(event);
-      return res.json({
-        gameId,
-        state: service.getSnapshot().value,
-        context: service.getSnapshot().context,
-      });
-    } catch (error) {
-      return res.status(400).json({ error: 'Invalid event' });
-    }
+    const snapshot = gameService.sendEventToGame(req.params.gameId, event);
+    return res.json({
+      state: snapshot.value,
+      context: snapshot.context,
+    });
+  } catch (err: any) {
+    return res.status(404).json({ error: err.message });
   }
 }

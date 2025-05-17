@@ -1,9 +1,13 @@
+import express from 'express';
+import cors from 'cors';
+import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 
-// Charger les variables d'environnement
 dotenv.config();
 
-export const serverConfig = {
-  port: process.env.PORT || 3000,
-  // Ajouter d'autres configurations serveur ici
-};
+export function setupExpress(app: express.Express) {
+  app.use(cors());
+  //app.use(express.json());
+  app.use(bodyParser.urlencoded({ extended: true }));
+  app.use(bodyParser.json());
+}

@@ -1,12 +1,15 @@
 import { gameMachine } from "@/machines/gameMachine.js";
-import { GameEvent } from "@yamaster/logic/src/types.js";
+import { Cell, GameEvent } from "@yamaster/logic/src/types.js";
 import { createActor, ActorRefFrom } from "xstate";
+import WebSocket from "ws";
+import { GameContext } from "@yamaster/logic/src/gameMachine.js";
 
 type GameActor = ActorRefFrom<typeof gameMachine>;
 
 interface CreateOptions {
   mode: "pvp" | "pvb";
   botDifficulty?: "easy" | "hard";
+  diceCount?: number;
 }
 
 interface GameRecord {
@@ -19,6 +22,22 @@ interface GameRecord {
 
 const games = new Map<string, GameRecord>();
 
+/** Cherche la première cellule (x,y) libre sur une grille 5×5 */
+function getFirstFreeCell(context: GameContext, playerIndex: number): Cell {
+  const occupied = new Set<string>(
+    Object.keys(context.players[playerIndex].occupied)
+  );
+  for (let x = 0; x < 5; x++) {
+    for (let y = 0; y < 5; y++) {
+      const key = `${x}:${y}`;
+      if (!occupied.has(key)) {
+        return { x, y };
+      }
+    }
+  }
+  return { x: 0, y: 0 };
+}
+
 /**
  * Crée une nouvelle partie et démarre la machine.
  * @param gameId Identifiant de la partie.
@@ -29,25 +48,66 @@ export function createGame(gameId: string, options: CreateOptions) {
     throw new Error(`Game ${gameId} already exists`);
   }
 
-  // 1. Crée l’acteur à partir de la machine
+  // 1. Crée l’acteur
   const actor = createActor(gameMachine);
 
-  // 2. Démarre la machine en lui envoyant TOUT le payload START_GAME
-  actor.start({
+  // 2. Démarre la machine (entre en état 'idle')
+  actor.start();
+
+  // 3. Envoie l'événement START_GAME pour qu'elle passe en 'waiting' ou 'playing'
+  actor.send({
     type: "START_GAME",
     mode: options.mode,
-    // botDifficulty ne sera inclus que si mode==='pvb'
-    ...(options.mode === "pvb"
-      ? { botDifficulty: options.botDifficulty }
-      : {}),
-    // diceCount par défaut à 5 si non spécifié
     diceCount: options.diceCount ?? 5,
+    ...(options.mode === "pvb" && { botDifficulty: options.botDifficulty }),
   } as unknown as GameEvent);
 
-  // 3. Conserve l’acteur et la liste WS
-  games.set(gameId, { actor, clients: new Set() });
+  // Si PvB, on branche le bot
+  if (options.mode === "pvb") {
+    actor.subscribe((state) => {
+      // On ne réagit que quand c'est au tour du bot
+      if (
+        state.context.currentPlayerIndex === 1 &&
+        state.matches("playing.playerTurn.rollPhase")
+      ) {
+        // Premier réflexe : tant qu'il reste des lancers, on relance
+        actor.send({ type: "ROLL" });
+      }
 
-  // 4. Renvoie immédiatement le snapshot (état + contexte)
+      // Quand on arrive dans la phase de choix
+      else if (
+        state.context.currentPlayerIndex === 1 &&
+        state.matches("playing.playerTurn.choosePhase")
+      ) {
+        const { dice, rollsLeft } = state.context;
+
+        // Si on a encore des lancers, mieux vaut relancer
+        if (rollsLeft > 0) {
+          actor.send({ type: "ROLL" });
+        } else {
+          // Sinon, on choisit la première combo valide
+          const combos = evaluateCombinations(dice);
+          const choice = combos[0];
+          const cell = getFirstFreeCell(state.context, 1);
+
+          actor.send({
+            type: "CHOOSE_COMBINATION",
+            combination: choice,
+            cell,
+          } as GameEvent);
+
+          // Puis on confirme tout de suite
+          actor.send({
+            type: "ACCEPT_COMBINATION",
+            cell,
+          } as GameEvent);
+        }
+      }
+    });
+  }
+
+  // 4. Sauvegarde et renvoie l'état courant
+  games.set(gameId, { actor, clients: new Set() });
   return actor.getSnapshot();
 }
 
@@ -55,16 +115,12 @@ export function createGame(gameId: string, options: CreateOptions) {
  * Ajoute un joueur à une partie.
  * @param gameId Identifiant de la partie.
  * @param playerId Identifiant du joueur.
- * @param ws WebSocket du joueur.
  */
-export function joinGame(gameId: string, playerId: string, ws: WebSocket) {
+export function joinGame(gameId: string, playerId: "player2") {
   const rec = games.get(gameId);
-  if (!rec) throw new Error(`Game ${gameId} non trouvée`);
-  if (rec.players.has(playerId))
-    throw new Error(`Joueur ${playerId} déjà dans la partie`);
-  rec.players.add(playerId);
-  rec.clients.add(ws);
-  return rec.actor.getSnapshot(); // TODO: renvoyer le contexte aussi ?
+  if (!rec) throw new Error(`Game ${gameId} not found`);
+  rec.actor.send({ type: "JOIN", playerId });
+  return rec.actor.getSnapshot();
 }
 
 /**
@@ -82,15 +138,14 @@ export function getGameState(gameId: string) {
  * @param gameId Identifiant de la partie.
  * @param event Événement à envoyer.
  */
-export function sendEventToGame(gameId: string, event: unknown) {
+export function sendEventToGame(gameId: string, event: GameEvent) {
   const rec = games.get(gameId);
-  if (!rec) throw new Error(`Game ${gameId} non trouvée`);
+  if (!rec) throw new Error(`Game ${gameId} not found`);
   rec.actor.send(event);
   const state = rec.actor.getSnapshot();
-  // Broadcast à tous les WebSocket enregistrés
-  const payload = JSON.stringify({ type: "STATE_UPDATE", state });
+  const msg = JSON.stringify({ type: "STATE_UPDATE", state });
   for (const ws of rec.clients) {
-    if (ws.readyState === ws.OPEN) ws.send(payload);
+    if (ws.readyState === ws.OPEN) ws.send(msg);
   }
   return state;
 }
@@ -102,19 +157,10 @@ export function sendEventToGame(gameId: string, event: unknown) {
  */
 export function subscribeClient(gameId: string, ws: WebSocket) {
   const rec = games.get(gameId);
-  if (!rec) throw new Error(`Game ${gameId} non trouvée`);
+  if (!rec) throw new Error(`Game ${gameId} not found`);
   rec.clients.add(ws);
-
-  // Au moment de l'abonnement, envoie l'état initial
   ws.send(
-    JSON.stringify({
-      type: "STATE_INIT",
-      state: rec.actor.getSnapshot(),
-    })
+    JSON.stringify({ type: "STATE_INIT", state: rec.actor.getSnapshot() })
   );
-
-  // Nettoyage à la déconnexion
-  ws.on("close", () => {
-    rec.clients.delete(ws);
-  });
+  ws.addEventListener("close", () => rec.clients.delete(ws));
 }

@@ -1,0 +1,5 @@
+# TypeScript
+*.tsbuildinfo
+*.tsbuildinfo.*
+*.d.ts
+*.d.ts.*
