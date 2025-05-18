@@ -12,7 +12,7 @@ gameRouter.get("/:gameId", controller.getGameState);
 // POST /api/games/:gameId/join - Rejoindre une partie
 gameRouter.post("/:gameId/join", controller.joinGame);
 
-// POST /api/games/:gameId/action - Actions de jeu (ROLL, KEEP, SCORE)
-gameRouter.post("/:gameId/action", controller.postGameEvent);
+// POST /api/games/:gameId/events - Actions de jeu (ROLL, KEEP, SCORE)
+gameRouter.post("/:gameId/events", controller.postGameEvent);
 
 export { gameRouter };
