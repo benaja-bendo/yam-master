@@ -1,49 +1,31 @@
-import React from 'react';
-import {
-    FaQuestionCircle,
-    FaCog,
-    FaInstagram,
-    FaTwitter,
-} from 'react-icons/fa';
-import {
-    Container,
-    Header,
-    HelpIcon,
-    SettingsIcon,
-    Title,
-    Main,
-    Button,
-    Footer,
-    FooterLink,
-    Socials,
-} from './App.styles';
+import { createBrowserRouter } from "react-router";
+import { Home } from "./pages/Home/Home.tsx";
+import { Game } from "./pages/Game/Game.tsx";
+import { Results } from "./pages/Results/Results.tsx";
+import { Settings } from "./pages/Settings/Settings.tsx";
+import { NotFound } from "./pages/NotFound/NotFound.tsx";
 
-const App: React.FC = () => {
-    return (
-        <Container>
-            <Header>
-                <HelpIcon><FaQuestionCircle /></HelpIcon>
-                <SettingsIcon><FaCog /></SettingsIcon>
-            </Header>
+const appRouter = createBrowserRouter([
+  {
+    path: "/",
+    Component: Home
+  },
+  {
+    path: "/game",
+    Component: Game
+  },
+  {
+    path: "/results",
+    Component: Results
+  },
+  {
+    path: "/settings",
+    Component: Settings
+  },
+  {
+    path: "*",
+    Component: NotFound
+  }
+]);
 
-            <Main>
-                <Title>Snakescrabble</Title>
-                <Button variant="primary">New Game</Button>
-                <Button variant="secondary">Mode : Single</Button>
-                <Button variant="secondary">Level : Easy</Button>
-                <Button variant="dark">Invite Player</Button>
-            </Main>
-
-            <Footer>
-                <FooterLink href="#">Contact</FooterLink>
-                <FooterLink href="#">Privacy Policy</FooterLink>
-                <Socials>
-                    <a href="#"><FaInstagram /></a>
-                    <a href="#" style={{ marginLeft: 12 }}><FaTwitter /></a>
-                </Socials>
-            </Footer>
-        </Container>
-    );
-};
-
-export default App;
+export default appRouter;
