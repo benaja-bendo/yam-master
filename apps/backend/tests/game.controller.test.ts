@@ -1,117 +1,205 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import request from 'supertest';
-import { WebSocketManager } from '../src/websocket/websocket';
-import { GameController } from '../src/controllers/game.controller';
+import * as gameController from '../src/controllers/game.controller';
 import app from '../src/index';
+import * as gameService from '../src/services/gameService';
 
-// Mock WebSocketManager
-vi.mock('../src/config/websocket', () => ({
-  WebSocketManager: vi.fn().mockImplementation(() => ({
-    notifyGameUpdate: vi.fn(),
-  })),
+// Mock du service de jeu
+vi.mock('../src/services/gameService', () => ({
+  createGame: vi.fn(),
+  joinGame: vi.fn(),
+  getGameState: vi.fn(),
+  sendEventToGame: vi.fn(),
 }));
 
-describe('GameController', () => {
-  let gameController: GameController;
-  let wsManager: WebSocketManager;
+// Mock de l'UUID pour les tests
+vi.mock('uuid', () => ({
+  v4: vi.fn().mockReturnValue('mocked-uuid')
+}));
 
+describe('Game Controller', () => {
   beforeEach(() => {
-    wsManager = new WebSocketManager();
-    gameController = new GameController(wsManager);
+    vi.clearAllMocks();
   });
 
-  describe('startGame', () => {
-    it('devrait créer une nouvelle partie avec succès', async () => {
+  describe('createGame', () => {
+    it('devrait créer une nouvelle partie en mode PVP avec succès', async () => {
+      // Arrange
+      const mockSnapshot = { value: 'waiting', context: { players: [] } };
+      vi.mocked(gameService.createGame).mockReturnValue(mockSnapshot);
+      
+      // Act
       const res = await request(app)
         .post('/api/games')
-        .send({ gameId: 'test-game-1', diceCount: 5 });
+        .send({ mode: 'pvp' });
 
-      expect(res.status).toBe(200);
-      expect(res.body).toHaveProperty('gameId', 'test-game-1');
-      expect(res.body).toHaveProperty('state');
-      expect(res.body).toHaveProperty('context');
+      // Assert
+      expect(res.status).toBe(201);
+      expect(res.body).toHaveProperty('gameId', 'mocked-uuid');
+      expect(res.body.state).toHaveProperty('value', 'waiting');
+      expect(res.body.state).toHaveProperty('context');
+      expect(gameService.createGame).toHaveBeenCalledWith('mocked-uuid', { mode: 'pvp' });
     });
 
-    it('devrait retourner une erreur si la partie existe déjà', async () => {
-      // Créer une première partie
-      await request(app)
-        .post('/api/games')
-        .send({ gameId: 'test-game-2', diceCount: 5 });
-
-      // Tenter de créer une partie avec le même ID
+    it('devrait créer une nouvelle partie en mode PVB avec succès', async () => {
+      // Arrange
+      const mockSnapshot = { value: 'waiting', context: { players: [] } };
+      vi.mocked(gameService.createGame).mockReturnValue(mockSnapshot);
+      
+      // Act
       const res = await request(app)
         .post('/api/games')
-        .send({ gameId: 'test-game-2', diceCount: 5 });
+        .send({ mode: 'pvb', botDifficulty: 'easy' });
 
+      // Assert
+      expect(res.status).toBe(201);
+      expect(res.body).toHaveProperty('gameId', 'mocked-uuid');
+      expect(gameService.createGame).toHaveBeenCalledWith('mocked-uuid', { 
+        mode: 'pvb', 
+        botDifficulty: 'easy' 
+      });
+    });
+
+    it('devrait retourner une erreur 400 si le mode est invalide', async () => {
+      // Act
+      const res = await request(app)
+        .post('/api/games')
+        .send({ mode: 'invalid' });
+
+      // Assert
       expect(res.status).toBe(400);
-      expect(res.body).toHaveProperty('error', 'Game already exists');
+      expect(res.body).toHaveProperty('error', "mode must be 'pvp' or 'pvb'");
+      expect(gameService.createGame).not.toHaveBeenCalled();
+    });
+
+    it('devrait retourner une erreur 400 si le mode est pvb sans botDifficulty', async () => {
+      // Act
+      const res = await request(app)
+        .post('/api/games')
+        .send({ mode: 'pvb' });
+
+      // Assert
+      expect(res.status).toBe(400);
+      expect(res.body).toHaveProperty('error', "botDifficulty is required when mode is 'pvb'");
+      expect(gameService.createGame).not.toHaveBeenCalled();
+    });
+
+    it('devrait retourner une erreur 400 si le service lance une exception', async () => {
+      // Arrange
+      vi.mocked(gameService.createGame).mockImplementation(() => {
+        throw new Error('Game creation failed');
+      });
+      
+      // Act
+      const res = await request(app)
+        .post('/api/games')
+        .send({ mode: 'pvp' });
+
+      // Assert
+      expect(res.status).toBe(400);
+      expect(res.body).toHaveProperty('error', 'Game creation failed');
+    });
+  });
+
+  describe('joinGame', () => {
+    it('devrait permettre à un joueur de rejoindre une partie existante', async () => {
+      // Arrange
+      const mockSnapshot = { value: 'playing', context: { players: [] } };
+      vi.mocked(gameService.joinGame).mockReturnValue(mockSnapshot);
+      
+      // Act
+      const res = await request(app)
+        .post('/api/games/game-123/join')
+        .send({ playerId: 'player2' });
+
+      // Assert
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('state', 'playing');
+      expect(res.body).toHaveProperty('context');
+      expect(gameService.joinGame).toHaveBeenCalledWith('game-123', 'player2');
+    });
+
+    it('devrait retourner une erreur 404 si la partie n\'existe pas', async () => {
+      // Arrange
+      vi.mocked(gameService.joinGame).mockImplementation(() => {
+        throw new Error('Game not found');
+      });
+      
+      // Act
+      const res = await request(app)
+        .post('/api/games/nonexistent-game/join')
+        .send({ playerId: 'player2' });
+
+      // Assert
+      expect(res.status).toBe(404);
+      expect(res.body).toHaveProperty('error', 'Game not found');
     });
   });
 
   describe('getGameState', () => {
-    it('devrait retourner l\'état de la partie', async () => {
-      // Créer une partie d'abord
-      await request(app)
-        .post('/api/games')
-        .send({ gameId: 'test-game-3', diceCount: 5 });
+    it('devrait retourner l\'état d\'une partie existante', async () => {
+      // Arrange
+      const mockSnapshot = { value: 'playing', context: { players: [] } };
+      vi.mocked(gameService.getGameState).mockReturnValue(mockSnapshot);
+      
+      // Act
+      const res = await request(app).get('/api/games/game-123');
 
-      // Récupérer l'état de la partie
-      const res = await request(app).get('/api/games/test-game-3');
-
+      // Assert
       expect(res.status).toBe(200);
-      expect(res.body).toHaveProperty('gameId', 'test-game-3');
-      expect(res.body).toHaveProperty('state');
+      expect(res.body).toHaveProperty('state', 'playing');
       expect(res.body).toHaveProperty('context');
+      expect(gameService.getGameState).toHaveBeenCalledWith('game-123');
     });
 
-    it('devrait retourner 404 si la partie n\'existe pas', async () => {
+    it('devrait retourner une erreur 404 si la partie n\'existe pas', async () => {
+      // Arrange
+      vi.mocked(gameService.getGameState).mockImplementation(() => {
+        throw new Error('Game not found');
+      });
+      
+      // Act
       const res = await request(app).get('/api/games/nonexistent-game');
 
+      // Assert
       expect(res.status).toBe(404);
       expect(res.body).toHaveProperty('error', 'Game not found');
     });
   });
 
-  describe('sendEvent', () => {
+  describe('postGameEvent', () => {
     it('devrait traiter un événement de jeu avec succès', async () => {
-      // Créer une partie d'abord
-      await request(app)
-        .post('/api/games')
-        .send({ gameId: 'test-game-4', diceCount: 5 });
-
-      // Envoyer un événement
+      // Arrange
+      const mockSnapshot = { value: 'rolling', context: { players: [] } };
+      vi.mocked(gameService.sendEventToGame).mockReturnValue(mockSnapshot);
+      const event = { type: 'ROLL_DICE' };
+      
+      // Act
       const res = await request(app)
-        .post('/api/games/test-game-4/events')
-        .send({ type: 'ROLL_DICE' });
+        .post('/api/games/game-123/events')
+        .send(event);
 
+      // Assert
       expect(res.status).toBe(200);
-      expect(res.body).toHaveProperty('gameId', 'test-game-4');
-      expect(res.body).toHaveProperty('state');
+      expect(res.body).toHaveProperty('state', 'rolling');
       expect(res.body).toHaveProperty('context');
+      expect(gameService.sendEventToGame).toHaveBeenCalledWith('game-123', event);
     });
 
-    it('devrait retourner 404 si la partie n\'existe pas', async () => {
+    it('devrait retourner une erreur 404 si la partie n\'existe pas', async () => {
+      // Arrange
+      vi.mocked(gameService.sendEventToGame).mockImplementation(() => {
+        throw new Error('Game not found');
+      });
+      
+      // Act
       const res = await request(app)
         .post('/api/games/nonexistent-game/events')
         .send({ type: 'ROLL_DICE' });
 
+      // Assert
       expect(res.status).toBe(404);
       expect(res.body).toHaveProperty('error', 'Game not found');
-    });
-
-    it('devrait retourner 400 pour un événement invalide', async () => {
-      // Créer une partie d'abord
-      await request(app)
-        .post('/api/games')
-        .send({ gameId: 'test-game-5', diceCount: 5 });
-
-      // Envoyer un événement invalide
-      const res = await request(app)
-        .post('/api/games/test-game-5/events')
-        .send({ type: 'INVALID_EVENT' });
-
-      expect(res.status).toBe(400);
-      expect(res.body).toHaveProperty('error', 'Invalid event');
     });
   });
 });
