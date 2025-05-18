@@ -14,11 +14,13 @@ initWebSocket(server);
 const port = process.env.PORT || 3000;
 const env = process.env.NODE_ENV || 'development';
 
-// Démarrage du serveur
-server.listen(port, () => {
-  console.log(
-    `🚀 Backend listening on http://localhost:${port} en mode ${env}`
-  );
-});
+// Démarrage du serveur seulement si ce n'est pas un test
+if (process.env.NODE_ENV !== 'test') {
+  server.listen(port, () => {
+    console.log(
+      `🚀 Backend listening on http://localhost:${port} en mode ${env}`
+    );
+  });
+}
 
 export default app;

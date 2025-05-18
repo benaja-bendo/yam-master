@@ -1,8 +1,7 @@
-import { gameMachine } from "@/machines/gameMachine.js";
-import { Cell, GameEvent } from "@yamaster/logic/src/types.js";
 import { createActor, ActorRefFrom } from "xstate";
 import WebSocket from "ws";
-import { GameContext } from "@yamaster/logic/src/gameMachine.js";
+import { GameContext, evaluateCombinations,Cell, GameEvent  } from "@yamaster/logic";
+import { gameMachine } from '../machines/gameMachine';
 
 type GameActor = ActorRefFrom<typeof gameMachine>;
 

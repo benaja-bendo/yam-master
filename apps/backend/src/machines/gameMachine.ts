@@ -1,3 +1,3 @@
-import { gameMachine as logicGameMachine } from "@yamaster/logic/src/gameMachine";
+import { gameMachine as logicGameMachine } from "@yamaster/logic";
 
 export const gameMachine = logicGameMachine;

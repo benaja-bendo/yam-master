@@ -42,7 +42,9 @@ export async function joinGame(req: Request, res: Response) {
   try {
     const { playerId } = req.body as { playerId: 'player2' };
     const snapshot = gameService.joinGame(req.params.gameId, playerId);
-    return res.json({
+    return res.
+    status(200).
+    json({
       state: snapshot.value,
       context: snapshot.context,
     });
@@ -54,7 +56,9 @@ export async function joinGame(req: Request, res: Response) {
 export async function getGameState(req: Request, res: Response) {
   try {
     const snapshot = gameService.getGameState(req.params.gameId);
-    return res.json({
+    return res.
+    status(200).
+    json({
       state: snapshot.value,
       context: snapshot.context,
     });
@@ -67,7 +71,9 @@ export async function postGameEvent(req: Request, res: Response) {
   try {
     const event = req.body;
     const snapshot = gameService.sendEventToGame(req.params.gameId, event);
-    return res.json({
+    return res.
+    status(200).
+    json({
       state: snapshot.value,
       context: snapshot.context,
     });
