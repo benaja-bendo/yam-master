@@ -1,8 +1,8 @@
-import type { Request, Response } from "express";
+import type { Request, Response, Handler } from "express";
 import * as gameService from "../services/gameService";
 import { v4 as uuidv4 } from "uuid";
 
-export async function createGame(req: Request, res: Response) {
+export const createGame = async (req: Request, res: Response) => {
   try {
     const { mode, botDifficulty } = req.body as {
       mode: "pvp" | "pvb";
@@ -38,7 +38,7 @@ export async function createGame(req: Request, res: Response) {
   }
 }
 
-export async function joinGame(req: Request, res: Response) {
+export const joinGame = async (req: Request, res: Response) => {
   try {
     const { playerId } = req.body as { playerId: 'player2' };
     const snapshot = gameService.joinGame(req.params.gameId, playerId);
@@ -53,7 +53,7 @@ export async function joinGame(req: Request, res: Response) {
   }
 }
 
-export async function getGameState(req: Request, res: Response) {
+export const getGameState = async (req: Request, res: Response) => {
   try {
     const snapshot = gameService.getGameState(req.params.gameId);
     return res.
@@ -67,7 +67,7 @@ export async function getGameState(req: Request, res: Response) {
   }
 }
 
-export async function postGameEvent(req: Request, res: Response) {
+export const postGameEvent = async (req: Request, res: Response) => {
   try {
     const event = req.body;
     const snapshot = gameService.sendEventToGame(req.params.gameId, event);
