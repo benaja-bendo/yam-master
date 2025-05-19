@@ -26,10 +26,11 @@ export type BotDifficulty = 'easy' | 'hard';
 // État du jeu
 export type GameState =
   | { value: 'idle' }
-  | { value: 'rolling'; dice: number[] }
-  | { value: 'choosing'; keptDice: number[]; dice: number[] }
-  | { value: 'checking'; keptDice: number[]; dice: number[] }
-  | { value: 'playing'; checkEnd: 'gameOver' | 'nextPlayer' | 'nextTurn' };
+  | { value: 'setup' }
+  | { value: 'waiting' }
+  | { value: 'playing'; state: 'playerTurn' | 'checkEnd' | 'switchPlayer' }
+  | { value: 'playing.playerTurn'; state: 'start' | 'rollPhase' | 'rolling' | 'choosePhase' | 'yamPredator' | 'placePawn' | 'resolve' }
+  | { value: 'gameOver' };
 
 export type GameContext = {
   mode: GameMode;

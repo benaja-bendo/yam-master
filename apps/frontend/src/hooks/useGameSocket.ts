@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import type { GameState } from "@yamaster/logic";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 export type WSMessage =
-  | { type: 'STATE_INIT'; state: any }
-  | { type: 'STATE_UPDATE'; state: any }
-  | { type: 'ERROR'; message: string };
+  | { type: "STATE_INIT"; state: GameState }
+  | { type: "STATE_UPDATE"; state: GameState }
+  | { type: "ERROR"; message: string };
 
 export function useGameSocket(gameId: string, playerId: string) {
-  const [state, setState] = useState<any>(null);
+  const [state, setState] = useState<GameState | null>(null);
   const [connected, setConnected] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket>();
@@ -16,64 +17,70 @@ export function useGameSocket(gameId: string, playerId: string) {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(msg));
     } else {
-      console.warn('WebSocket non connecté, impossible d\'envoyer le message:', msg);
+      console.warn(
+        "WebSocket non connecté, impossible d'envoyer le message:",
+        msg
+      );
     }
   }, []);
 
   const connect = useCallback(() => {
     if (!gameId) return;
-    
+
     // Nettoyer toute tentative de reconnexion précédente
     if (reconnectTimeoutRef.current) {
       window.clearTimeout(reconnectTimeoutRef.current);
     }
 
-    const url = (import.meta.env.DEV
-      ? 'ws://localhost:3000/ws'
-      : `${window.location.origin}/ws`
-    );
-    
+    const url = import.meta.env.DEV
+      ? "ws://localhost:3000/ws"
+      : `${window.location.origin}/ws`;
+
     const ws = new WebSocket(url);
     wsRef.current = ws;
 
-    ws.addEventListener('open', () => {
+    ws.addEventListener("open", () => {
       setConnected(true);
       setError(null);
-      console.log(`WebSocket connecté pour la partie ${gameId} en tant que ${playerId}`);
-      ws.send(JSON.stringify({ type: 'JOIN', gameId, playerId }));
+      console.log(
+        `WebSocket connecté pour la partie ${gameId} en tant que ${playerId}`
+      );
+      ws.send(JSON.stringify({ type: "JOIN", gameId, playerId }));
     });
-    
-    ws.addEventListener('message', (ev) => {
+
+    ws.addEventListener("message", (ev) => {
       try {
         const msg: WSMessage = JSON.parse(ev.data);
-        if (msg.type === 'STATE_INIT' || msg.type === 'STATE_UPDATE') {
+        if (msg.type === "STATE_INIT" || msg.type === "STATE_UPDATE") {
           setState(msg.state);
-        } else if (msg.type === 'ERROR') {
+        } else if (msg.type === "ERROR") {
           setError(msg.message);
-          console.error('Erreur WebSocket:', msg.message);
+          console.error("Erreur WebSocket:", msg.message);
         }
       } catch (err) {
-        console.error('Erreur lors du traitement du message WebSocket:', err);
+        console.error("Erreur lors du traitement du message WebSocket:", err);
       }
     });
-    
-    ws.addEventListener('close', (event) => {
+
+    ws.addEventListener("close", (event) => {
       setConnected(false);
-      console.log(`WebSocket déconnecté, code: ${event.code}, raison: ${event.reason}`);
-      
+      console.log(
+        `WebSocket déconnecté, code: ${event.code}, raison: ${event.reason}`
+      );
+
       // Tentative de reconnexion après 3 secondes
       reconnectTimeoutRef.current = window.setTimeout(() => {
-        console.log('Tentative de reconnexion WebSocket...');
+        console.log("Tentative de reconnexion WebSocket...");
         connect();
       }, 3000);
     });
-    
-    ws.addEventListener('error', () => {
+
+    ws.addEventListener("error", () => {
       setConnected(false);
-      setError('Erreur de connexion au serveur de jeu');
-      console.error('Erreur de connexion WebSocket');
+      setError("Erreur de connexion au serveur de jeu");
+      console.error("Erreur de connexion WebSocket");
     });
-    
+
     return () => {
       ws.close();
       if (reconnectTimeoutRef.current) {
@@ -88,5 +95,4 @@ export function useGameSocket(gameId: string, playerId: string) {
   }, [connect]);
 
   return { state, send, connected, error };
-
 }

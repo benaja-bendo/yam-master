@@ -22,7 +22,7 @@ export const DiceRoll: React.FC<DiceRollProps> = ({
         <h3>Dés en jeu</h3>
         <div className="dice-display">
           {dice.map((die, index) => (
-            <Button key={index} onClick={() => onKeep(index)}>
+            <Button variant='primary' key={index} onClick={() => onKeep(index)}>
               {die}
             </Button>
           ))}

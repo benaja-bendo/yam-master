@@ -4,6 +4,7 @@ import { GameBoard } from '../../components/GameBoard';
 import { useGameSocket } from '../../hooks/useGameSocket';
 import { fetchGameState } from '../../api/gameApi';
 import { Container, Main, Title } from '../../App.styles.ts';
+import type { GameState } from '@yamaster/logic';
 
 export const Game: React.FC = () => {
   const [gameId, setGameId] = useState<string>();
@@ -52,73 +53,68 @@ export const Game: React.FC = () => {
   }, [navigate]);
 
   return (
-    <>
-    <p>Game</p>
-    </>
-  )
-  // return (
-  //   <Container>
-  //     <Main>
-  //       <Title>yamaster</Title>
+    <Container>
+      <Main>
+        <Title>yamaster</Title>
 
-  //       {loading ? (
-  //         <div style={{ textAlign: 'center', padding: '2rem' }}>
-  //           <p>Chargement de la partie...</p>
-  //         </div>
-  //       ) : error ? (
-  //         <div style={{ textAlign: 'center', padding: '2rem' }}>
-  //           <p style={{ color: 'red' }}>{error}</p>
-  //           <button 
-  //             onClick={() => navigate('/')} 
-  //             style={{ 
-  //               padding: '0.5rem 1rem', 
-  //               marginTop: '1rem', 
-  //               background: '#333', 
-  //               color: 'white', 
-  //               border: 'none', 
-  //               borderRadius: '4px', 
-  //               cursor: 'pointer' 
-  //             }}
-  //           >
-  //             Retour à l'accueil
-  //           </button>
-  //         </div>
-  //       ) : (
-  //         <>
-  //           <GameBoard state={state} send={send} />
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            <p>Chargement de la partie...</p>
+          </div>
+        ) : error ? (
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            <p style={{ color: 'red' }}>{error}</p>
+            <button 
+              onClick={() => navigate('/')} 
+              style={{ 
+                padding: '0.5rem 1rem', 
+                marginTop: '1rem', 
+                background: '#333', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: '4px', 
+                cursor: 'pointer' 
+              }}
+            >
+              Retour à l'accueil
+            </button>
+          </div>
+        ) : (
+          <>
+            <GameBoard state={state} send={send} />
             
-  //           {playerId === 'player1' && (
-  //             <div style={{ textAlign: 'center', marginTop: '1rem', padding: '1rem', background: '#f5f5f5', borderRadius: '4px' }}>
-  //               <p>Partagez ce lien pour inviter un joueur :</p>
-  //               <input 
-  //                 type="text" 
-  //                 readOnly 
-  //                 value={`${window.location.origin}/game?gameId=${gameId}&playerId=player2`}
-  //                 style={{ 
-  //                   width: '100%', 
-  //                   padding: '0.5rem', 
-  //                   marginTop: '0.5rem', 
-  //                   border: '1px solid #ddd', 
-  //                   borderRadius: '4px' 
-  //                 }} 
-  //                 onClick={(e) => (e.target as HTMLInputElement).select()}
-  //               />
-  //             </div>
-  //           )}
+            {playerId === 'player1' && (
+              <div style={{ textAlign: 'center', marginTop: '1rem', padding: '1rem', background: '#f5f5f5', borderRadius: '4px' }}>
+                <p>Partagez ce lien pour inviter un joueur :</p>
+                <input 
+                  type="text" 
+                  readOnly 
+                  value={`${window.location.origin}/game?gameId=${gameId}&playerId=player2`}
+                  style={{ 
+                    width: '100%', 
+                    padding: '0.5rem', 
+                    marginTop: '0.5rem', 
+                    border: '1px solid #ddd', 
+                    borderRadius: '4px' 
+                  }} 
+                  onClick={(e) => (e.target as HTMLInputElement).select()}
+                />
+              </div>
+            )}
             
-  //           <div style={{ 
-  //             textAlign: 'center', 
-  //             marginTop: '0.5rem', 
-  //             padding: '0.5rem', 
-  //             borderRadius: '4px',
-  //             color: connected ? 'green' : 'red',
-  //             fontSize: '0.9rem'
-  //           }}>
-  //             {connected ? '✓ Connecté au serveur de jeu' : '✗ Déconnecté du serveur de jeu'}
-  //           </div>
-  //         </>
-  //       )}
-  //     </Main>
-  //   </Container>
-  // );
+            <div style={{ 
+              textAlign: 'center', 
+              marginTop: '0.5rem', 
+              padding: '0.5rem', 
+              borderRadius: '4px',
+              color: connected ? 'green' : 'red',
+              fontSize: '0.9rem'
+            }}>
+              {connected ? '✓ Connecté au serveur de jeu' : '✗ Déconnecté du serveur de jeu'}
+            </div>
+          </>
+        )}
+      </Main>
+    </Container>
+  );
 };
