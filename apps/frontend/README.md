@@ -1,54 +1,84 @@
-# React + TypeScript + Vite
+# Frontend YaMaster 🎮
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## 🌟 Vue d'ensemble
 
-Currently, two official plugins are available:
+Le frontend de YaMaster est une application web rapide, interactive et moderne développée avec React, TypeScript et Vite. Il permet une expérience utilisateur fluide avec une interface responsive et intuitive.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### Points Forts 💪
 
-## Expanding the ESLint configuration
+- Interface moderne avec React + Vite
+- Typage fort grâce à TypeScript
+- UI responsive avec Tailwind CSS
+- Routage dynamique avec React Router
+- Gestion d’état centralisée (Zustand, Redux, etc.)
+- Tests unitaires avec Vitest / Testing Library
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 🛠 Stack Technique
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+- **React** : Bibliothèque UI
+- **Vite** : Dev server et bundler moderne
+- **TypeScript** : Typage statique
+- **Tailwind CSS** : Framework CSS utilitaire
+- **React Router** : Gestion du routage
+
+## 🚀 Prérequis
+
+- Node.js (v18 ou supérieur)
+- pnpm (gestionnaire de paquets)
+- Git
+
+## ⚙️ Installation et Lancement
+
+```bash
+pnpm install
+cd apps/frontend
+pnpm dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 💻 Commandes de Développement
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```bash
+# Démarrage en mode développement
+pnpm dev
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+# Construction de l’application
+pnpm build
+
+# Tests unitaires
+pnpm test
+
+# Linter
+pnpm lint
 ```
+
+## 🏗 Architecture du Projet
+
+```shell
+apps/web/
+├── src/
+│   ├── components/    # Composants réutilisables
+│   ├── pages/         # Pages principales
+│   ├── routes/        # Définition des routes
+│   ├── hooks/         # Hooks personnalisés
+│   └── stores/        # Zustand / Redux
+└── public/            # Fichiers statiques
+```
+
+## 🧪 Tests
+
+```bash
+pnpm test       # Exécution des tests
+pnpm test:watch # Mode watch
+```
+
+## 🤝 Contribution
+
+1. Fork le projet
+2. Créez votre branche (`git checkout -b feature/NouvelleFonction`)
+3. Committez (`git commit -m 'feat: Ajout d’une fonction'`)
+4. Poussez (`git push origin feature/NouvelleFonction`)
+5. Ouvrez une Pull Request
+
+## 📝 Licence
+
+Ce projet est sous licence ISC - voir le fichier [LICENSE](LICENSE) pour plus d'informations.
