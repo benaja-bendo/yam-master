@@ -1,7 +1,7 @@
-import { createActor, ActorRefFrom } from "xstate";
 import WebSocket from "ws";
-import { GameContext, evaluateCombinations,Cell, GameEvent  } from "@yamaster/logic";
-import { gameMachine } from '../machines/gameMachine';
+import { createActor, ActorRefFrom } from "xstate";
+import { gameMachine } from "../machines/gameMachine";
+import { GameContext, GameEvent, Cell, evaluateCombinations } from "@yamaster/logic";
 
 type GameActor = ActorRefFrom<typeof gameMachine>;
 
@@ -14,80 +14,83 @@ interface CreateOptions {
 interface GameRecord {
   actor: GameActor;
   clients: Set<WebSocket>;
-  // players: Set<string>;
-  // mode: "pvp" | "pvb";
-  // botDifficulty?: "easy" | "hard";
 }
 
-const games = new Map<string, GameRecord>();
+export class GameService {
+  private games = new Map<string, GameRecord>();
 
-/** Cherche la première cellule (x,y) libre sur une grille 5×5 */
-function getFirstFreeCell(context: GameContext, playerIndex: number): Cell {
-  const occupied = new Set<string>(
-    Object.keys(context.players[playerIndex].occupied)
-  );
-  for (let x = 0; x < 5; x++) {
-    for (let y = 0; y < 5; y++) {
-      const key = `${x}:${y}`;
-      if (!occupied.has(key)) {
-        return { x, y };
-      }
+  /** Crée une partie PvP */
+  public createPvPGame(gameId: string, diceCount = 5) {
+    return this._createGame(gameId, { mode: "pvp", diceCount });
+  }
+
+  /** Crée une partie PvB (Player vs Bot) */
+  public createPvBGame(
+    gameId: string,
+    botDifficulty: "easy" | "hard" = "easy",
+    diceCount = 5
+  ) {
+    return this._createGame(gameId, {
+      mode: "pvb",
+      botDifficulty,
+      diceCount,
+    });
+  }
+
+  /** Méthode interne générique */
+  private _createGame(gameId: string, options: CreateOptions) {
+    if (this.games.has(gameId)) {
+      throw new Error(`Game ${gameId} already exists`);
     }
+
+    // 1. Crée et démarre l’acteur
+    const actor = createActor(gameMachine);
+    actor.start();
+
+    // 2. Démarre la partie selon le mode
+    actor.send({
+      type: "START_GAME",
+      mode: options.mode,
+      diceCount: options.diceCount,
+      ...(options.mode === "pvb" && { botDifficulty: options.botDifficulty }),
+    } as unknown as GameEvent);
+
+    // 3. Si PvB, on branche le bot
+    if (options.mode === "pvb") {
+      this._attachBotLogic(actor);
+    }
+
+    // 4. Enregistrement
+    this.games.set(gameId, { actor, clients: new Set() });
+
+    // 5. Renvoi de l’état initial
+    return actor.getSnapshot();
   }
-  return { x: 0, y: 0 };
-}
 
-/**
- * Crée une nouvelle partie et démarre la machine.
- * @param gameId Identifiant de la partie.
- * @param options Options de la partie.
- */
-export function createGame(gameId: string, options: CreateOptions) {
-  if (games.has(gameId)) {
-    throw new Error(`Game ${gameId} already exists`);
-  }
-
-  // 1. Crée l’acteur
-  const actor = createActor(gameMachine);
-
-  // 2. Démarre la machine (entre en état 'idle')
-  actor.start();
-
-  // 3. Envoie l'événement START_GAME pour qu'elle passe en 'waiting' ou 'playing'
-  actor.send({
-    type: "START_GAME",
-    mode: options.mode,
-    diceCount: options.diceCount ?? 5,
-    ...(options.mode === "pvb" && { botDifficulty: options.botDifficulty }),
-  } as unknown as GameEvent);
-
-  // Si PvB, on branche le bot
-  if (options.mode === "pvb") {
+  /** Abonne la logique automatique du bot sur les états de la machine */
+  private _attachBotLogic(actor: GameActor) {
     actor.subscribe((state) => {
-      // On ne réagit que quand c'est au tour du bot
+      const { currentPlayerIndex, rollsLeft, dice } = state.context;
+
+      // Quand c’est au tour du bot et qu’il reste des lancers
       if (
-        state.context.currentPlayerIndex === 1 &&
+        currentPlayerIndex === 1 &&
         state.matches("playing.playerTurn.rollPhase")
       ) {
-        // Premier réflexe : tant qu'il reste des lancers, on relance
         actor.send({ type: "ROLL" });
       }
 
-      // Quand on arrive dans la phase de choix
+      // Phase de choix pour le bot
       else if (
-        state.context.currentPlayerIndex === 1 &&
+        currentPlayerIndex === 1 &&
         state.matches("playing.playerTurn.choosePhase")
       ) {
-        const { dice, rollsLeft } = state.context;
-
-        // Si on a encore des lancers, mieux vaut relancer
-        if (rollsLeft > 0) {
+        if (rollsLeft! > 0) {
           actor.send({ type: "ROLL" });
         } else {
-          // Sinon, on choisit la première combo valide
-          const combos = evaluateCombinations(dice);
+          const combos = evaluateCombinations(dice!);
           const choice = combos[0];
-          const cell = getFirstFreeCell(state.context, 1);
+          const cell = this._getFirstFreeCell(state.context, 1);
 
           actor.send({
             type: "CHOOSE_COMBINATION",
@@ -95,7 +98,6 @@ export function createGame(gameId: string, options: CreateOptions) {
             cell,
           } as GameEvent);
 
-          // Puis on confirme tout de suite
           actor.send({
             type: "ACCEPT_COMBINATION",
             cell,
@@ -105,61 +107,59 @@ export function createGame(gameId: string, options: CreateOptions) {
     });
   }
 
-  // 4. Sauvegarde et renvoie l'état courant
-  games.set(gameId, { actor, clients: new Set() });
-  return actor.getSnapshot();
-}
-
-/**
- * Ajoute un joueur à une partie.
- * @param gameId Identifiant de la partie.
- * @param playerId Identifiant du joueur.
- */
-export function joinGame(gameId: string, playerId: "player2") {
-  const rec = games.get(gameId);
-  if (!rec) throw new Error(`Game ${gameId} not found`);
-  rec.actor.send({ type: "JOIN", playerId });
-  return rec.actor.getSnapshot();
-}
-
-/**
- * Récupère l'état courant d'une partie.
- * @param gameId Identifiant de la partie.
- */
-export function getGameState(gameId: string) {
-  const rec = games.get(gameId);
-  if (!rec) throw new Error(`Game ${gameId} non trouvée`);
-  return rec.actor.getSnapshot();
-}
-
-/**
- * Envoie un événement XState à la partie, et notifie tous les clients WS.
- * @param gameId Identifiant de la partie.
- * @param event Événement à envoyer.
- */
-export function sendEventToGame(gameId: string, event: GameEvent) {
-  const rec = games.get(gameId);
-  if (!rec) throw new Error(`Game ${gameId} not found`);
-  rec.actor.send(event);
-  const state = rec.actor.getSnapshot();
-  const msg = JSON.stringify({ type: "STATE_UPDATE", state });
-  for (const ws of rec.clients) {
-    if (ws.readyState === ws.OPEN) ws.send(msg);
+  /** Trouve la première cellule libre pour un joueur donné */
+  private _getFirstFreeCell(
+    context: GameContext,
+    playerIndex: number
+  ): Cell {
+    const occupied = new Set(
+      Object.keys(context.players[playerIndex].occupied)
+    );
+    for (let x = 0; x < 5; x++) {
+      for (let y = 0; y < 5; y++) {
+        const key = `${x}:${y}`;
+        if (!occupied.has(key)) {
+          return { x, y };
+        }
+      }
+    }
+    // Par sécurité, retourner (0,0)
+    return { x: 0, y: 0 };
   }
-  return state;
-}
 
-/**
- * Associe un client WS à une partie pour recevoir les updates.
- * @param gameId Identifiant de la partie.
- * @param ws WebSocket du client.
- */
-export function subscribeClient(gameId: string, ws: WebSocket) {
-  const rec = games.get(gameId);
-  if (!rec) throw new Error(`Game ${gameId} not found`);
-  rec.clients.add(ws);
-  ws.send(
-    JSON.stringify({ type: "STATE_INIT", state: rec.actor.getSnapshot() })
-  );
-  ws.addEventListener("close", () => rec.clients.delete(ws));
+  /** Ajoute un client WebSocket pour recevoir les mises à jour */
+  public subscribeClient(gameId: string, ws: WebSocket) {
+    const rec = this.games.get(gameId);
+    if (!rec) throw new Error(`Game ${gameId} not found`);
+
+    rec.clients.add(ws);
+    // Envoi de l'état initial
+    ws.send(JSON.stringify({ type: "STATE_INIT", state: rec.actor.getSnapshot() }));
+
+    ws.on("close", () => rec.clients.delete(ws));
+  }
+
+  /** Envoie un événement à la partie et notifie tous les clients */
+  public sendEventToGame(gameId: string, event: GameEvent) {
+    const rec = this.games.get(gameId);
+    if (!rec) throw new Error(`Game ${gameId} not found`);
+
+    rec.actor.send(event);
+    const state = rec.actor.getSnapshot();
+    const msg = JSON.stringify({ type: "STATE_UPDATE", state });
+
+    for (const ws of rec.clients) {
+      if (ws.readyState === ws.OPEN) {
+        ws.send(msg);
+      }
+    }
+    return state;
+  }
+
+  /** Récupère l’état actuel */
+  public getGameState(gameId: string) {
+    const rec = this.games.get(gameId);
+    if (!rec) throw new Error(`Game ${gameId} not found`);
+    return rec.actor.getSnapshot();
+  }
 }
