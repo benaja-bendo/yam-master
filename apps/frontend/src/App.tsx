@@ -4,6 +4,7 @@ import { Game } from "./pages/Game/Game.tsx";
 import { Results } from "./pages/Results/Results.tsx";
 import { Settings } from "./pages/Settings/Settings.tsx";
 import { NotFound } from "./pages/NotFound/NotFound.tsx";
+import { GamePage } from "./pages/Game/GamePage.tsx";
 
 const appRouter = createBrowserRouter([
   {
@@ -12,7 +13,8 @@ const appRouter = createBrowserRouter([
   },
   {
     path: "/game",
-    Component: Game
+    // Component: Game
+    Component: GamePage
   },
   {
     path: "/results",

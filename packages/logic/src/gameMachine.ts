@@ -30,6 +30,12 @@ export const gameMachine = createMachine(
         on: {
           START_GAME: {
             target: "setup",
+            actions: assign({
+              mode: ({event}) => event.mode,
+              botDifficulty: ({event}) =>
+                event.mode === "pvb" ? event.botDifficulty : undefined,
+              diceCount: ({event}) => event.diceCount ?? 5,
+            }),
           },
         },
       },

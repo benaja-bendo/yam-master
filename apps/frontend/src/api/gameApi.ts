@@ -1,39 +1,77 @@
 import axios from "axios";
 import type { GameState, GameContext } from "@yamaster/logic";
 
-const base = import.meta.env.DEV 
-  ? 'http://localhost:3000/api' 
-  : '/api';
+/**
+ * Point d'entrée selon l'environnement
+ */
+const base = import.meta.env.DEV
+  ? "http://localhost:3000/api"
+  : "/api";
 
+type PlayerId = "player1" | "player2";
+
+/** Paramètres pour la création de partie */
 export interface CreateGameParams {
-  mode: 'pvp' | 'pvb';
-  botDifficulty?: 'easy' | 'hard';
+  mode: "pvp" | "pvb";
+  botDifficulty?: "easy" | "hard";
   diceCount?: number;
 }
 
-export interface GameStateResponse {
-  value: GameState['value'];
-  context: GameContext;
+/** Réponse brute du serveur incluant gameId et état initial */
+export interface CreateGameResponse {
+  gameId: string;
+  mode: "pvp" | "pvb";
+  state: {
+    value: GameState["value"];
+    context: GameContext;
+  };
 }
 
+/** Réponse pour les actions join, fetch, event */
 export interface GameResponse {
-  state: GameState['value'];
-  context: GameContext;
+  state: {
+    value: GameState["value"];
+    context: GameContext;
+  };
 }
 
-export async function createGame(params: CreateGameParams) {
+/** Crée une partie PvP ou PvB selon params */
+export async function createGame(
+  params: CreateGameParams
+): Promise<CreateGameResponse> {
   const { data } = await axios.post(`${base}/games`, params);
-  return data as { gameId: string; state: GameStateResponse };
+  return data as CreateGameResponse;
 }
 
-export async function joinGame(gameId: string, playerId: 'player2') {
-  const { data } = await axios.post(`${base}/games/${gameId}/join`, { playerId });
+/** Rejoint une partie existante en tant que player2 */
+export async function joinGame(
+  gameId: string,
+  playerId: "player2"
+): Promise<GameResponse> {
+  const { data } = await axios.post(
+    `${base}/games/${gameId}/join`,
+    { playerId }
+  );
   return data as GameResponse;
 }
 
-export async function fetchGameState(gameId: string) {
+/** Récupère l'état courant d'une partie */
+export async function fetchGameState(
+  gameId: string
+): Promise<GameResponse> {
+  // GET /api/games/:gameId
   const { data } = await axios.get(`${base}/games/${gameId}`);
-  console.log(data);
-  
+  return data as GameResponse;
+}
+
+/** Envoie un événement de jeu (ROLL, CHOOSE_COMBINATION, ACCEPT_COMBINATION) */
+export async function sendEventToGame(
+  gameId: string,
+  event: any
+): Promise<GameResponse> {
+  const { data } = await axios.post(
+    `${base}/games/${gameId}/event`,
+    event
+  );
   return data as GameResponse;
 }

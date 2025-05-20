@@ -60,7 +60,7 @@ export const Title = styled.h1`
   text-align: center;
 `;
 
-type ButtonProps = { variant: 'primary' | 'secondary' | 'dark' };
+type ButtonProps = { $variant: 'primary' | 'secondary' | 'dark' };
 
 export const Button = styled.button<ButtonProps>`
   width: 240px;
@@ -94,15 +94,15 @@ export const Button = styled.button<ButtonProps>`
     transform: translateX(0);
   }
 
-  ${({ variant }) => variant === 'primary' && css`
+  ${({ $variant }) => $variant  === 'primary' && css`
     background: linear-gradient(to right, #f7ff80, #d8ff00);
     color: #2c4d3f;
   `}
-  ${({ variant }) => variant === 'secondary' && css`
+  ${({ $variant  }) => $variant  === 'secondary' && css`
     background: linear-gradient(to right, #6da78e, #5a9178);
     color: #fff;
   `}
-  ${({ variant }) => variant === 'dark' && css`
+  ${({ $variant  }) => $variant  === 'dark' && css`
     background: linear-gradient(to right, #2c4d3f, #1a3a2c);
     color: #fff;
   `}
