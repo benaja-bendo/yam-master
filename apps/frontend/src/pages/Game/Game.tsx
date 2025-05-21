@@ -3,6 +3,7 @@ import { Container, Main, Title } from "../../App.styles";
 import { GameBoard } from "../../components/GameBoard";
 import { useGameSocket } from "../../hooks/useGameSocket";
 import { useGameInitialization } from "@/hooks/useGameInitialization.ts";
+import { ErrorContainer } from "./GameStyle.ts";
 
 export const Game: React.FC = () => {
   const { gameId, playerId, loading, error, setError } =

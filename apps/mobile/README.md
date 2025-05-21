@@ -1,85 +1,60 @@
-# Mobile YaMaster 🎮
+# YAMaster Mobile
 
-## 🌟 Vue d'ensemble
+## Description
 
-L'application mobile de YaMaster, développée avec React Native et Expo, permet une expérience de jeu portable sur Android et iOS. Elle offre une interface fluide, rapide et cohérente avec la version web.
+Application mobile React Native pour YAMaster, intégrée dans le monorepo avec une configuration compatible avec les autres applications.
 
-### Points Forts 💪
+## Configuration
 
-- Déploiement facile avec Expo
-- Support Android et iOS
-- Typage complet avec TypeScript
-- Navigation fluide avec React Navigation
-- Composants réutilisables
-- Tests unitaires avec Jest et Testing Library
+L'application mobile est configurée pour partager les packages communs avec le reste du monorepo :
 
-## 🛠 Stack Technique
+- Utilise les mêmes versions de React que le frontend (^19.1.0)
+- Partage les packages `@yamaster/logic` et `@yamaster/types`
+- Configuration TypeScript alignée avec le reste du projet
 
-- **React Native** : Framework mobile
-- **Expo** : Outils et services pour React Native
-- **TypeScript** : Typage statique
-- **React Navigation** : Gestion de la navigation
-- **Jest** : Framework de test
-
-## 🚀 Prérequis
-
-- Node.js (v18 ou supérieur)
-- pnpm
-- Git
-- Expo CLI :
+## Démarrage
 
 ```bash
-npm install -g expo-cli
-```
-
-## ⚙️ Installation et Lancement
-
-```bash
+# Installer les dépendances (à la racine du monorepo)
 pnpm install
+
+# Démarrer l'application mobile
+pnpm dev:mobile
+
+# Ou directement depuis le dossier mobile
 cd apps/mobile
 pnpm start
 ```
 
-## 📱 Commandes
+## Développement
 
-```bash
-# Démarrage avec Expo
-pnpm start
+### Structure des dossiers
 
-# Tests unitaires
-pnpm test
-
-# Linter
-pnpm lint
 ```
-
-## 🏗 Architecture du Projet
-
-```shell
 apps/mobile/
-├── app/             # Écrans (screens) avec Expo Router ou navigation classique
-├── components/      # Composants partagés
-├── assets/          # Images, sons, etc.
-├── hooks/           # Hooks personnalisés
-└── stores/          # Gestion d’état
+├── app/            # Fichiers de l'application (utilisant expo-router)
+├── assets/         # Images, polices et autres ressources
+├── components/     # Composants réutilisables
+├── hooks/          # Hooks personnalisés
+├── services/       # Services et API
+└── utils/          # Fonctions utilitaires
 ```
 
-## 🧪 Tests
+### Commandes disponibles
 
-```bash
-pnpm test           # Exécution des tests avec Jest
-pnpm test:watch     # Mode watch
+- `pnpm start` : Démarre le serveur de développement Expo
+- `pnpm android` : Lance l'application sur un émulateur/appareil Android
+- `pnpm ios` : Lance l'application sur un simulateur/appareil iOS
+- `pnpm web` : Lance l'application en mode web
+- `pnpm lint` : Exécute le linter
+- `pnpm build` : Construit l'application pour la production (nécessite une configuration EAS)
+
+## Partage de code
+
+Pour utiliser le code partagé des packages communs :
+
+```javascript
+// Importer depuis les packages partagés
+import { someFunction } from '@yamaster/logic';
+import type { SomeType } from '@yamaster/types';
 ```
-
-## 🤝 Contribution
-
-1. Fork le projet
-2. Créez une branche (`git checkout -b feature/NouvelleFonction`)
-3. Ajoutez votre code
-4. Testez (`pnpm test`)
-5. Poussez vos modifications (`git push`)
-6. Créez une Pull Request
-
-## 📝 Licence
-
-Ce projet est sous licence ISC - voir le fichier [LICENSE](LICENSE) pour plus d’informations.
