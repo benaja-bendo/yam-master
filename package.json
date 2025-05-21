@@ -8,7 +8,9 @@
     "dev": "concurrently \"pnpm --filter frontend dev\" \"pnpm --filter backend dev\"",
     "dev:backend": "pnpm --filter backend dev",
     "dev:frontend": "pnpm --filter frontend dev",
+    "dev:mobile": "pnpm --filter mobile start",
     "build": "pnpm --filter frontend build && pnpm --filter backend build",
+    "build:mobile": "pnpm --filter mobile build",
     "test": "pnpm -r test"
   },
   "keywords": [],

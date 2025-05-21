@@ -1,6 +1,6 @@
 packages:
   - apps/*
   - packages/*
-  - tests'
+  - tests/*
 
 nodeLinker: hoisted
